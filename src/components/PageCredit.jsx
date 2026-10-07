@@ -4,8 +4,10 @@ import { toFa } from '../utils/format';
 import { PALETTE, baseGrid, baseTooltip, baseLegend, faValueAxis, faCategoryAxis, FONT } from '../utils/echartsTheme';
 
 // Page 5 of the PDF: "اعتباری"
-// Layout (compact, fits on one screen):
-//   Top: 4-list grid for banks/funds
+// Layout (matches the PDF):
+//   Top: 2x2 grid of bank-list cards
+//     [بانک‌های ارائه‌دهنده تسهیلات]  [سایر نهادهای ارائه‌دهنده تسهیلات]
+//     [بانک‌های ناشر ضمانت‌نامه]      [صندوق‌های ناشر ضمانت‌نامه]
 //   Middle: comparison chart (full width)
 //   Bottom: 7-row indicators table
 
@@ -78,7 +80,8 @@ export default function PageCredit({
         سال پایه ارقام اعتباری {toFa(1404)} در نظر گرفته شده است.
       </div>
 
-      <div className="grid-4col">
+      {/* 2x2 grid of bank lists */}
+      <div className="banks-2x2-grid">
         <BankListCard title="بانک‌های ارائه دهنده تسهیلات" items={banks.loanBanks} />
         <BankListCard title="سایر نهادهای ارائه‌دهنده تسهیلات" items={banks.loanFunds} />
         <BankListCard title="بانک‌های ناشر ضمانت نامه" items={banks.guaranteeBanks} />
@@ -87,7 +90,7 @@ export default function PageCredit({
 
       <div className="chart-card compact">
         <div className="chart-title compact">مقایسه روند درآمدی با تسهیلات دریافتی</div>
-        <ReactECharts option={comparisonTrendOption} style={{ height: 260 }} />
+        <ReactECharts option={comparisonTrendOption} style={{ height: 220 }} />
         <div className="unit-note" style={{ marginTop: 6, marginBottom: 0 }}>
           تمامی ارقام به میلیارد تومان می‌باشد.
         </div>

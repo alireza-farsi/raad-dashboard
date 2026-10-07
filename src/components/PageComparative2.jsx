@@ -5,21 +5,29 @@ import { PALETTE, baseGrid, baseTooltip, baseLegend, faValueAxis, faCategoryAxis
 
 // Page 7 of the PDF: "ارقام مقایسه‌ای (ترازنامه و اعتبارات)"
 // 4 sections in a 2x2 grid. Each section: chart on top, KPI strip below.
-//
-//   1) روند وام فعال به نسبت حقوق صاحبان سهام — bars (وام فعال بانکی) on
-//      left axis, line (نسبت آنی) on right axis
-//   2) روند تغییرات نسبت مالکانه — bars (مجموع بدهی‌ها) on left axis,
-//      line (نسبت مالکانه) on right axis
-//   3) روند وام فعال به نسبت حقوق صاحبان سهام — bars (ضمانت‌نامه فعال بانکی)
-//      on left, line (نسبت وام فعال به ح.ص.س) on right
-//   4) روند تغییرات نسبت جاری — bars (دارایی‌های جاری) on left,
-//      line (نسبت جاری) on right
+// All charts use dual y-axes — bars on the left (financial amounts in
+// billion toman) and a line on the right (a unitless ratio). Each axis
+// has explicit min: 0 and a max derived from the data so the bars/lines
+// don't collapse to invisible when one year's value is much larger.
 
 const TREND_YEARS = ['1396', '1397', '1398', '1399', '1400', '1401', '1402', '1403'];
 
-// Years are kept as Latin-digit strings because they're used as keys to look
-// up data in balanceByYear / ratiosByYear / creditRealByYear. The
-// faCategoryAxis helper renders them as Persian digits on screen.
+// Compute a clean "nice" max for an axis from a list of values.
+function niceMax(values, fallback = 1) {
+  const valid = values.filter((v) => v !== null && v !== undefined && !Number.isNaN(v));
+  if (valid.length === 0) return fallback;
+  const max = Math.max(...valid);
+  if (max <= 0) return fallback;
+  // Round up to next "nice" number
+  const mag = Math.pow(10, Math.floor(Math.log10(max)));
+  const norm = max / mag;
+  let nice;
+  if (norm <= 1) nice = 1;
+  else if (norm <= 2) nice = 2;
+  else if (norm <= 5) nice = 5;
+  else nice = 10;
+  return nice * mag;
+}
 
 export default function PageComparative2({
   balanceByYear,
@@ -32,63 +40,67 @@ export default function PageComparative2({
   const r = ratiosByYear[year] || {};
   const cr = creditRealByYear[year] || {};
 
+  // Pre-compute the data arrays so we can derive axis max from them.
+  const activeLoanData = TREND_YEARS.map((y) => creditRealByYear[y]?.activeBankFacility ?? null);
+  const quickRatioData = TREND_YEARS.map((y) => ratiosByYear[y]?.quickRatio ?? null);
+  const totalLiabData = TREND_YEARS.map((y) => balanceByYear[y]?.totalLiabilities ?? null);
+  const equityRatioData = TREND_YEARS.map((y) => ratiosByYear[y]?.equityRatio ?? null);
+  const guarTahodData = TREND_YEARS.map((y) => creditRealByYear[y]?.guarTahod ?? null);
+  const loanToEquityData = TREND_YEARS.map((y) => {
+    const loan = creditRealByYear[y]?.activeBankFacility;
+    const eq = balanceByYear[y]?.equities;
+    if (loan === null || loan === undefined || eq === null || eq === undefined || eq === 0) return null;
+    return loan / eq;
+  });
+  const currentAssetsData = TREND_YEARS.map((y) => balanceByYear[y]?.totalCurrentAssets ?? null);
+  const currentRatioData = TREND_YEARS.map((y) => ratiosByYear[y]?.currentRatio ?? null);
+
   // ----- Section 1: نسبت آنی + وام فعال بانکی -----
-  // Bar (left axis): وام فعال بانکی
-  // Line (right axis): نسبت آنی
   const quickOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 50, bottom: 30 },
+    grid: { ...baseGrid, top: 40, bottom: 30 },
     tooltip: {
       ...baseTooltip,
-      valueFormatter: (val, p) => {
-        if (p?.seriesName === 'نسبت آنی') return toFa(val.toFixed(2));
-        return toFa(val.toFixed(1));
-      },
+      valueFormatter: (val, p) => p?.seriesName === 'نسبت آنی' ? toFa(val.toFixed(2)) : toFa(val.toFixed(1)),
     },
     legend: { ...baseLegend, data: ['وام فعال بانکی', 'نسبت آنی'] },
     xAxis: { type: 'category', data: TREND_YEARS, ...faCategoryAxis() },
     yAxis: [
-      { type: 'value', ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
-      { type: 'value', name: 'نسبت', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 }, splitLine: { show: false }, axisLabel: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 11, formatter: (v) => toFa(v.toFixed(1)) } },
+      { type: 'value', min: 0, max: niceMax(activeLoanData, 300), ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
+      { type: 'value', min: 0, max: niceMax(quickRatioData, 3), name: 'نسبت', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 }, splitLine: { show: false }, axisLabel: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 11, formatter: (v) => toFa(v.toFixed(1)) } },
     ],
     series: [
       {
         name: 'وام فعال بانکی',
         type: 'bar',
-        data: TREND_YEARS.map((y) => creditRealByYear[y]?.activeBankFacility ?? null),
+        data: activeLoanData,
         itemStyle: { color: PALETTE.gold, borderRadius: [4, 4, 0, 0] },
         barWidth: 14,
       },
       {
         name: 'نسبت آنی',
         type: 'line',
-        data: TREND_YEARS.map((y) => ratiosByYear[y]?.quickRatio ?? null),
+        data: quickRatioData,
         smooth: true, symbol: 'circle', symbolSize: 7,
         lineStyle: { color: PALETTE.tealDark, width: 2.5 },
         itemStyle: { color: PALETTE.tealDark },
         yAxisIndex: 1,
       },
     ],
-  }), [ratiosByYear, creditRealByYear]);
+  }), [activeLoanData, quickRatioData]);
 
   // ----- Section 2: ownership ratio trend -----
-  // Bar (left): مجموع بدهی‌ها
-  // Line (right): نسبت مالکانه
   const equityOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 50, bottom: 30 },
+    grid: { ...baseGrid, top: 40, bottom: 30 },
     tooltip: {
       ...baseTooltip,
-      valueFormatter: (val, p) => {
-        if (p?.seriesName === 'نسبت مالکانه') return toFa((val * 100).toFixed(0)) + '٪';
-        return toFa(val.toFixed(1));
-      },
+      valueFormatter: (val, p) => p?.seriesName === 'نسبت مالکانه' ? toFa((val * 100).toFixed(0)) + '٪' : toFa(val.toFixed(1)),
     },
     legend: { ...baseLegend, data: ['مجموع بدهی‌ها', 'نسبت مالکانه'] },
     xAxis: { type: 'category', data: TREND_YEARS, ...faCategoryAxis() },
     yAxis: [
-      { type: 'value', ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
+      { type: 'value', min: 0, max: niceMax(totalLiabData, 1000), ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
       {
-        type: 'value', name: 'نسبت', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 },
-        min: 0, max: 1,
+        type: 'value', min: 0, max: 1, name: 'نسبت', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 },
         splitLine: { show: false },
         axisLabel: {
           fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 11,
@@ -100,102 +112,91 @@ export default function PageComparative2({
       {
         name: 'مجموع بدهی‌ها',
         type: 'bar',
-        data: TREND_YEARS.map((y) => balanceByYear[y]?.totalLiabilities ?? null),
+        data: totalLiabData,
         itemStyle: { color: PALETTE.danger, borderRadius: [4, 4, 0, 0] },
         barWidth: 14,
       },
       {
         name: 'نسبت مالکانه',
         type: 'line',
-        data: TREND_YEARS.map((y) => ratiosByYear[y]?.equityRatio ?? null),
+        data: equityRatioData,
         smooth: true, symbol: 'diamond', symbolSize: 7,
         lineStyle: { color: PALETTE.tealDark, width: 2.5 },
         itemStyle: { color: PALETTE.tealDark },
         yAxisIndex: 1,
       },
     ],
-  }), [balanceByYear, ratiosByYear]);
+  }), [totalLiabData, equityRatioData]);
 
   // ----- Section 3: active loan vs equity ratio -----
-  // Bar (left): ضمانت‌نامه فعال بانکی
-  // Line (right): نسبت وام فعال به ح.ص.س
-  const loanEquityOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 50, bottom: 30 },
-    tooltip: {
-      ...baseTooltip,
-      valueFormatter: (val, p) => {
-        if (p?.seriesName === 'نسبت وام فعال به ح.ص.س') return toFa(val.toFixed(2));
-        return toFa(val.toFixed(1));
+  const loanEquityOption = useMemo(() => {
+    // Multiply the ratio by 10 so the line isn't squashed at the bottom
+    // of a 0-1 axis next to bars that go up to 6.
+    return {
+      grid: { ...baseGrid, top: 40, bottom: 30 },
+      tooltip: {
+        ...baseTooltip,
+        valueFormatter: (val, p) => p?.seriesName === 'نسبت وام فعال به ح.ص.س' ? toFa(val.toFixed(2)) : toFa(val.toFixed(2)),
       },
-    },
-    legend: { ...baseLegend, data: ['ضمانت‌نامه فعال بانکی', 'نسبت وام فعال به ح.ص.س'] },
-    xAxis: { type: 'category', data: TREND_YEARS, ...faCategoryAxis() },
-    yAxis: [
-      { type: 'value', ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
-      { type: 'value', name: 'نسبت', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 }, splitLine: { show: false }, axisLabel: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 11, formatter: (v) => toFa(v.toFixed(2)) } },
-    ],
-    series: [
-      {
-        name: 'ضمانت‌نامه فعال بانکی',
-        type: 'bar',
-        data: TREND_YEARS.map((y) => creditRealByYear[y]?.guarTahod ?? null),
-        itemStyle: { color: PALETTE.gold, borderRadius: [4, 4, 0, 0] },
-        barWidth: 14,
-      },
-      {
-        name: 'نسبت وام فعال به ح.ص.س',
-        type: 'line',
-        data: TREND_YEARS.map((y) => {
-          const loan = creditRealByYear[y]?.activeBankFacility;
-          const eq = balanceByYear[y]?.equities;
-          if (loan === null || loan === undefined || eq === null || eq === undefined || eq === 0) return null;
-          return loan / eq;
-        }),
-        smooth: true, symbol: 'diamond', symbolSize: 7,
-        lineStyle: { color: PALETTE.tealDark, width: 2.5 },
-        itemStyle: { color: PALETTE.tealDark },
-        yAxisIndex: 1,
-      },
-    ],
-  }), [creditRealByYear, balanceByYear]);
+      legend: { ...baseLegend, data: ['ضمانت‌نامه فعال بانکی', 'نسبت وام فعال به ح.ص.س'] },
+      xAxis: { type: 'category', data: TREND_YEARS, ...faCategoryAxis() },
+      yAxis: [
+        { type: 'value', min: 0, max: niceMax(guarTahodData, 10), ...faValueAxis({ compact: false, decimals: 1 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
+        { type: 'value', min: 0, max: niceMax(loanToEquityData, 1), name: 'نسبت', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 }, splitLine: { show: false }, axisLabel: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 11, formatter: (v) => toFa(v.toFixed(2)) } },
+      ],
+      series: [
+        {
+          name: 'ضمانت‌نامه فعال بانکی',
+          type: 'bar',
+          data: guarTahodData,
+          itemStyle: { color: PALETTE.gold, borderRadius: [4, 4, 0, 0] },
+          barWidth: 14,
+        },
+        {
+          name: 'نسبت وام فعال به ح.ص.س',
+          type: 'line',
+          data: loanToEquityData,
+          smooth: true, symbol: 'diamond', symbolSize: 7,
+          lineStyle: { color: PALETTE.tealDark, width: 2.5 },
+          itemStyle: { color: PALETTE.tealDark },
+          yAxisIndex: 1,
+        },
+      ],
+    };
+  }, [guarTahodData, loanToEquityData]);
 
   // ----- Section 4: current ratio trend -----
-  // Bar (left): دارایی‌های جاری
-  // Line (right): نسبت جاری
   const currentRatioOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 50, bottom: 30 },
+    grid: { ...baseGrid, top: 40, bottom: 30 },
     tooltip: {
       ...baseTooltip,
-      valueFormatter: (val, p) => {
-        if (p?.seriesName === 'نسبت جاری') return toFa(val.toFixed(2));
-        return toFa(val.toFixed(1));
-      },
+      valueFormatter: (val, p) => p?.seriesName === 'نسبت جاری' ? toFa(val.toFixed(2)) : toFa(val.toFixed(1)),
     },
     legend: { ...baseLegend, data: ['دارایی‌های جاری', 'نسبت جاری'] },
     xAxis: { type: 'category', data: TREND_YEARS, ...faCategoryAxis() },
     yAxis: [
-      { type: 'value', ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
-      { type: 'value', name: 'نسبت', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 }, splitLine: { show: false }, axisLabel: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 11, formatter: (v) => toFa(v.toFixed(1)) } },
+      { type: 'value', min: 0, max: niceMax(currentAssetsData, 1000), ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
+      { type: 'value', min: 0, max: niceMax(currentRatioData, 3), name: 'نسبت', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 }, splitLine: { show: false }, axisLabel: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 11, formatter: (v) => toFa(v.toFixed(1)) } },
     ],
     series: [
       {
         name: 'دارایی‌های جاری',
         type: 'bar',
-        data: TREND_YEARS.map((y) => balanceByYear[y]?.totalCurrentAssets ?? null),
+        data: currentAssetsData,
         itemStyle: { color: PALETTE.teal, borderRadius: [4, 4, 0, 0] },
         barWidth: 14,
       },
       {
         name: 'نسبت جاری',
         type: 'line',
-        data: TREND_YEARS.map((y) => ratiosByYear[y]?.currentRatio ?? null),
+        data: currentRatioData,
         smooth: true, symbol: 'diamond', symbolSize: 7,
         lineStyle: { color: PALETTE.tealDark, width: 2.5 },
         itemStyle: { color: PALETTE.tealDark },
         yAxisIndex: 1,
       },
     ],
-  }), [balanceByYear, ratiosByYear]);
+  }), [currentAssetsData, currentRatioData]);
 
   // KPI strips for each section (current year)
   const section1Kpis = [
