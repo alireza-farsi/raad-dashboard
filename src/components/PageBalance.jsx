@@ -1,4 +1,4 @@
-import ReactECharts from 'echarts-for-react';
+import EChart from './EChart';
 import { useMemo } from 'react';
 import { toFa } from '../utils/format';
 import { PALETTE, baseGrid, baseTooltip, baseLegend, faValueAxis, faCategoryAxis, FONT } from '../utils/echartsTheme';
@@ -217,11 +217,11 @@ export default function PageBalance({ balance, year, allBalances }) {
       <div className="grid-2col">
         <div className="chart-card compact">
           <div className="chart-title compact">روند حساب‌های پرداختنی، دریافتی و تسهیلات مالی</div>
-          <ReactECharts option={payRecvTrendOption} style={{ height: 220 }} />
+          <EChart option={payRecvTrendOption} style={{ height: 220 }} />
         </div>
         <div className="chart-card compact">
           <div className="chart-title compact">روند تغییرات سرمایه در گردش به ترند دارایی‌ها</div>
-          <ReactECharts option={wcAssetsTrendOption} style={{ height: 220 }} />
+          <EChart option={wcAssetsTrendOption} style={{ height: 220 }} />
         </div>
       </div>
     </div>

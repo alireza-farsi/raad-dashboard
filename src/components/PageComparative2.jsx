@@ -1,6 +1,6 @@
-import ReactECharts from 'echarts-for-react';
+import EChart from './EChart';
 import { useMemo } from 'react';
-import { toFa, fmtNum } from '../utils/format';
+import { toFa } from '../utils/format';
 import { PALETTE, baseGrid, baseTooltip, baseLegend, faValueAxis, faCategoryAxis, FONT } from '../utils/echartsTheme';
 
 // Page 7 of the PDF: "ارقام مقایسه‌ای (ترازنامه و اعتبارات)"
@@ -233,22 +233,22 @@ export default function PageComparative2({
       <div className="comparative-grid">
         <Section
           title="روند وام فعال به نسبت حقوق صاحبان سهام"
-          chart={<ReactECharts option={quickOption} style={{ height: 220 }} />}
+          chart={<EChart option={quickOption} style={{ height: 220 }} />}
           kpis={section1Kpis}
         />
         <Section
           title="روند تغییرات نسبت مالکانه"
-          chart={<ReactECharts option={equityOption} style={{ height: 220 }} />}
+          chart={<EChart option={equityOption} style={{ height: 220 }} />}
           kpis={section2Kpis}
         />
         <Section
           title="روند وام فعال به نسبت حقوق صاحبان سهام"
-          chart={<ReactECharts option={loanEquityOption} style={{ height: 220 }} />}
+          chart={<EChart option={loanEquityOption} style={{ height: 220 }} />}
           kpis={section3Kpis}
         />
         <Section
           title="روند تغییرات نسبت جاری"
-          chart={<ReactECharts option={currentRatioOption} style={{ height: 220 }} />}
+          chart={<EChart option={currentRatioOption} style={{ height: 220 }} />}
           kpis={section4Kpis}
         />
       </div>

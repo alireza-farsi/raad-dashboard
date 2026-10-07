@@ -1,6 +1,6 @@
-import ReactECharts from 'echarts-for-react';
+import EChart from './EChart';
 import { useMemo } from 'react';
-import { toFa, fmtNum } from '../utils/format';
+import { toFa } from '../utils/format';
 import { PALETTE, baseGrid, baseTooltip, baseLegend, faValueAxis, faCategoryAxis, FONT } from '../utils/echartsTheme';
 
 // Page 6 of the PDF: "ارقام مقایسه‌ای (ترازنامه و صورت سود و زیان)"
@@ -241,22 +241,22 @@ export default function PageComparative1({
       <div className="comparative-grid">
         <Section
           title="روند تغییرات نسبت پوشش بهره"
-          chart={<ReactECharts option={coverageOption} style={{ height: 220 }} />}
+          chart={<EChart option={coverageOption} style={{ height: 220 }} />}
           kpis={section1Kpis}
         />
         <Section
           title="مقایسه روند بدهی‌ها با حقوق صاحبان سهام"
-          chart={<ReactECharts option={liabEquityOption} style={{ height: 220 }} />}
+          chart={<EChart option={liabEquityOption} style={{ height: 220 }} />}
           kpis={section2Kpis}
         />
         <Section
           title="روند سودآوری"
-          chart={<ReactECharts option={profitabilityOption} style={{ height: 220 }} />}
+          chart={<EChart option={profitabilityOption} style={{ height: 220 }} />}
           kpis={section3Kpis}
         />
         <Section
           title="مقایسه روند دارایی‌ها با سرمایه ثبتی"
-          chart={<ReactECharts option={assetsStockOption} style={{ height: 220 }} />}
+          chart={<EChart option={assetsStockOption} style={{ height: 220 }} />}
           kpis={section4Kpis}
         />
       </div>

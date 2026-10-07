@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import Sidebar from './components/Sidebar';
-import YearFilter, { toFarsiDigits } from './components/YearFilter';
+import YearFilter from './components/YearFilter';
 import PageAbout from './components/PageAbout';
 import PageSummary from './components/PageSummary';
 import PagePL from './components/PagePL';
@@ -13,11 +13,11 @@ import raadData from './data/raadData.json';
 import { exportAllPagesToPdf } from './utils/exportUtils';
 
 const PAGES = [
-  { key: 'about', label: 'درباره شرکت' },
-  { key: 'summary', label: 'خلاصه گزارش' },
-  { key: 'pl', label: 'صورت سود و زیان' },
-  { key: 'balance', label: 'ترازنامه' },
-  { key: 'credit', label: 'اعتباری' },
+  { key: 'about', label: 'درباره شرکت', sub: 'معرفی، هیئت مدیره، سهامداران و محصولات' },
+  { key: 'summary', label: 'خلاصه گزارش', sub: 'شاخص‌های کلیدی مالی و رتبه اعتباری' },
+  { key: 'pl', label: 'صورت سود و زیان', sub: 'عملکرد مالی دوره‌های اخیر' },
+  { key: 'balance', label: 'ترازنامه', sub: 'دارایی‌ها، بدهی‌ها و حقوق صاحبان سهام' },
+  { key: 'credit', label: 'اعتباری', sub: 'تسهیلات دریافتی و رفتار اعتباری' },
   { key: 'comparative1', label: 'ارقام مقایسه‌ای (ترازنامه و سود و زیان)' },
   { key: 'comparative2', label: 'ارقام مقایسه‌ای (ترازنامه و اعتبارات)' },
   { key: 'analysis', label: 'عارضه‌یابی اطلاعات مالی' },
@@ -79,7 +79,15 @@ export default function App() {
 
       <div className="main-area">
         <header className="topbar">
-          <div className="topbar-title">{currentPage?.label}</div>
+          <div className="topbar-heading">
+            <div className="topbar-crumb">
+              <span>صفحه اصلی</span>
+              <span className="crumb-sep">/</span>
+              <span className="crumb-current">{currentPage?.label}</span>
+            </div>
+            <div className="topbar-title">{currentPage?.label}</div>
+            {currentPage?.sub && <div className="topbar-sub">{currentPage.sub}</div>}
+          </div>
           <div className="topbar-actions">
             <YearFilter years={years} selected={selectedYear} onChange={setSelectedYear} />
             <div className="export-actions">
@@ -135,6 +143,7 @@ export default function App() {
               facilitiesByYear={raadData.facilitiesByYear}
               incomeByYear={raadData.incomeByYear}
               creditRealByYear={raadData.creditRealByYear}
+              creditByYear={raadData.creditByYear}
               diagnosisByYear={raadData.diagnosisByYear}
               year={selectedYear}
             />

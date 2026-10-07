@@ -1,28 +1,43 @@
 // Shared ECharts helpers for the dashboard.
 // All charts use the Ravi FaNum font and Persian digits on axis labels.
+// Palette matches the UI-sample design: slate bars, teal lines,
+// gold/tan/cyan accents, dashed light grid lines.
 
 import { toFa } from './format';
 
 const FONT = "'Ravi FaNum', Tahoma, sans-serif";
 
 const PALETTE = {
-  teal: '#1d9e75',
-  tealDark: '#085041',
-  tealLight: '#5dcaa5',
-  tealPale: '#e1f5ee',
-  gold: '#b7a26b',
-  ink: '#1f2421',
-  inkSoft: '#5b6560',
-  borderSoft: '#dedad0',
-  creamLight: '#f4f2ec',
+  teal: '#14967f',
+  tealDark: '#0b5d47',
+  tealDeep: '#083f35',
+  tealLight: '#7cc7ba',
+  tealPale: '#dff2ec',
+  gold: '#d4a373',
+  goldDeep: '#c5a059',
+  amber: '#eab308',
+  slate: '#1e293b',
+  ink: '#1f2937',
+  inkSoft: '#6b7280',
+  borderSoft: '#e7e2d5',
+  gridLine: '#e5e7eb',
+  bgSoft: '#faf8f2',
+  creamLight: '#f4f0e6',
   white: '#ffffff',
-  danger: '#c0392b',
-  warning: '#b7862f',
-  info: '#2c7fb8',
+  danger: '#b91c1c',
+  warning: '#b45309',
+  info: '#0e7490',
+  cyan: '#67e8f9',
   purple: '#7e57c2',
   series: [
-    '#085041', '#1d9e75', '#5dcaa5', '#b7a26b',
-    '#2c7fb8', '#7e57c2', '#c0392b', '#b7862f',
+    '#1e293b', // slate 800 — primary bars (PDF)
+    '#14967f', // teal 600 — primary line/bars (PDF)
+    '#d4a373', // tan/gold (PDF)
+    '#67e8f9', // cyan 300 (PDF)
+    '#eab308', // yellow/gold (PDF)
+    '#7e57c2', // purple
+    '#b91c1c', // red
+    '#0e7490', // cyan 700
   ],
 };
 
@@ -31,7 +46,7 @@ function faFormatter(fn) {
   return (val) => toFa(fn(val));
 }
 
-// Convert numeric value to Persian-digit label in billions (no K suffix — chart compact formatter handles it).
+// Convert numeric value to Persian-digit label.
 function toFaPlain(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return '—';
   return toFa(value);
@@ -43,21 +58,26 @@ export const baseTextStyle = {
 };
 
 export const baseGrid = {
-  left: 60,
-  right: 30,
-  top: 40,
-  bottom: 40,
+  left: 56,
+  right: 26,
+  top: 42,
+  bottom: 34,
   containLabel: true,
 };
 
 export const baseTooltip = {
   trigger: 'axis',
-  axisPointer: { type: 'shadow' },
+  axisPointer: {
+    type: 'shadow',
+    shadowStyle: { color: 'rgba(20, 150, 127, 0.06)' },
+  },
   backgroundColor: PALETTE.white,
   borderColor: PALETTE.borderSoft,
   borderWidth: 1,
+  padding: [10, 14],
   textStyle: { fontFamily: FONT, color: PALETTE.ink, fontSize: 12 },
-  extraCssText: 'direction: rtl; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);',
+  extraCssText:
+    'direction: rtl; border-radius: 10px; box-shadow: 0 8px 26px -8px rgba(31,41,55,0.25);',
   valueFormatter: (val) => (typeof val === 'number' ? toFa(val.toFixed(2)) : val),
 };
 
@@ -66,33 +86,24 @@ export const baseLegend = {
   type: 'scroll',
   top: 0,
   right: 0,
+  icon: 'circle',
   textStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 11 },
-  itemWidth: 10,
-  itemHeight: 10,
-  itemGap: 12,
+  itemWidth: 9,
+  itemHeight: 9,
+  itemGap: 14,
 };
 
-// Build default axis formatters that turn numeric values into Persian digit strings.
-// We never use the "K" compact suffix — instead we render the full number
-// with Persian thousands separators.
+// Build default axis formatters that turn numeric values into Persian digit
+// strings with thousands separators. Never uses the "K" compact suffix.
 export function faValueAxis(opts = {}) {
-  const { unit = '', decimals = 0, compact = false } = opts;
+  const { unit = '', decimals = 0 } = opts;
   return {
     axisLabel: {
       fontFamily: FONT,
       color: PALETTE.inkSoft,
       fontSize: 11,
       formatter: (val) => {
-        let s;
-        if (compact && Math.abs(val) >= 1000) {
-          // Use Persian-digit compact form WITH thousands separator instead of K suffix
-          const abs = Math.abs(val);
-          if (abs >= 1000000) s = (val / 1000000).toFixed(1) + 'M';
-          else s = Math.round(val).toLocaleString('en-US');
-        } else {
-          s = decimals > 0 ? val.toFixed(decimals) : Math.round(val).toString();
-        }
-        // Convert Latin digits to Persian and add thousands separators
+        let s = decimals > 0 ? val.toFixed(decimals) : Math.round(val).toString();
         const n = Number(s.replace(/[^\d.-]/g, ''));
         if (!Number.isNaN(n)) {
           s = n.toLocaleString('en-US', { maximumFractionDigits: decimals });
@@ -100,9 +111,9 @@ export function faValueAxis(opts = {}) {
         return toFa(s.replace(/,/g, '٬')) + (unit ? ' ' + unit : '');
       },
     },
-    axisLine: { lineStyle: { color: PALETTE.borderSoft } },
+    axisLine: { show: false },
     axisTick: { show: false },
-    splitLine: { lineStyle: { color: PALETTE.borderSoft, type: 'dashed' } },
+    splitLine: { lineStyle: { color: PALETTE.gridLine, type: 'dashed' } },
   };
 }
 
@@ -116,6 +127,17 @@ export function faCategoryAxis() {
     },
     axisLine: { lineStyle: { color: PALETTE.borderSoft } },
     axisTick: { show: false },
+  };
+}
+
+// Shared bar styling (PDF: flat slate/teal bars with rounded tops)
+export function barStyle(color, opts = {}) {
+  const { barWidth = undefined, radius = [4, 4, 0, 0] } = opts;
+  return {
+    type: 'bar',
+    barWidth,
+    itemStyle: { color, borderRadius: radius },
+    emphasis: { itemStyle: { color, opacity: 0.85 } },
   };
 }
 

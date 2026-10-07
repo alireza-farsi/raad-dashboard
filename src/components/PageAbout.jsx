@@ -18,6 +18,33 @@ export default function PageAbout({
 }) {
   return (
     <div className="page-inner">
+      {/* Company hero — PDF page 2 "اطلاعات پروژه" style */}
+      <div className="company-hero">
+        <div className="hero-avatar">{companyInfo.name?.slice(0, 1) || 'ر'}</div>
+        <div style={{ flex: 1, minWidth: 0, position: 'relative', zIndex: 1 }}>
+          <div className="hero-title">شرکت {companyInfo.name}</div>
+          <div className="hero-badges">
+            <span className="badge badge-teal">{companyInfo.legalType}</span>
+            <span className="badge badge-gold">{companyInfo.companySize}</span>
+            <span className="badge badge-outline">{companyInfo.activity}</span>
+            {knowledgeBase?.kbStatus && (
+              <span className="badge badge-success">دانش‌بنیان — {knowledgeBase.kbStatus}</span>
+            )}
+          </div>
+          <div className="hero-meta-row">
+            <HeroMeta label="مدیرعامل" value={companyInfo.ceo} />
+            <span className="hero-meta-sep">·</span>
+            <HeroMeta label="استان" value={companyInfo.province} />
+            <span className="hero-meta-sep">·</span>
+            <HeroMeta label="تعداد کارکنان" value={toFa(companyInfo.employeeNum)} />
+            <span className="hero-meta-sep">·</span>
+            <HeroMeta label="شناسه ملی" value={toFa(companyInfo.nationalCode)} ltr />
+            <span className="hero-meta-sep">·</span>
+            <HeroMeta label="تأسیس" value={toFa(companyInfo.establishmentDate)} />
+          </div>
+        </div>
+      </div>
+
       <div className="grid-2col">
         {/* LEFT COLUMN */}
         <div>
@@ -162,5 +189,14 @@ function Fact({ label, value, ltr }) {
       <div className="fact-label">{label}</div>
       <div className={`fact-value${ltr ? ' ltr' : ''}`}>{value ?? '—'}</div>
     </div>
+  );
+}
+
+function HeroMeta({ label, value, ltr }) {
+  return (
+    <span>
+      {label}:{' '}
+      <span className={`hero-meta-value${ltr ? ' ltr' : ''}`}>{value ?? '—'}</span>
+    </span>
   );
 }

@@ -1,6 +1,6 @@
-import ReactECharts from 'echarts-for-react';
+import EChart from './EChart';
 import { useMemo } from 'react';
-import { fmtNum, toFa } from '../utils/format';
+import { toFa } from '../utils/format';
 import { PALETTE, baseGrid, baseTooltip, baseLegend, faValueAxis, faCategoryAxis, FONT } from '../utils/echartsTheme';
 
 // Page 3 of the PDF: "صورت سود و زیان"
@@ -201,12 +201,12 @@ export default function PagePL({ income, ratios, year, allIncomes }) {
 
           <div className="chart-card compact">
             <div className="chart-title compact">روند تغییرات سودآوری</div>
-            <ReactECharts option={profitabilityTrendOption} style={{ height: 200 }} />
+            <EChart option={profitabilityTrendOption} style={{ height: 200 }} />
           </div>
 
           <div className="chart-card compact">
             <div className="chart-title compact">روند درآمد عملیاتی با احتساب تورم</div>
-            <ReactECharts option={inflationTrendOption} style={{ height: 200 }} />
+            <EChart option={inflationTrendOption} style={{ height: 200 }} />
           </div>
         </div>
       </div>
