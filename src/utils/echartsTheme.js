@@ -73,6 +73,8 @@ export const baseLegend = {
 };
 
 // Build default axis formatters that turn numeric values into Persian digit strings.
+// We never use the "K" compact suffix — instead we render the full number
+// with Persian thousands separators.
 export function faValueAxis(opts = {}) {
   const { unit = '', decimals = 0, compact = false } = opts;
   return {
@@ -83,11 +85,19 @@ export function faValueAxis(opts = {}) {
       formatter: (val) => {
         let s;
         if (compact && Math.abs(val) >= 1000) {
-          s = (val / 1000).toFixed(1) + 'K';
+          // Use Persian-digit compact form WITH thousands separator instead of K suffix
+          const abs = Math.abs(val);
+          if (abs >= 1000000) s = (val / 1000000).toFixed(1) + 'M';
+          else s = Math.round(val).toLocaleString('en-US');
         } else {
           s = decimals > 0 ? val.toFixed(decimals) : Math.round(val).toString();
         }
-        return toFa(s) + (unit ? ' ' + unit : '');
+        // Convert Latin digits to Persian and add thousands separators
+        const n = Number(s.replace(/[^\d.-]/g, ''));
+        if (!Number.isNaN(n)) {
+          s = n.toLocaleString('en-US', { maximumFractionDigits: decimals });
+        }
+        return toFa(s.replace(/,/g, '٬')) + (unit ? ' ' + unit : '');
       },
     },
     axisLine: { lineStyle: { color: PALETTE.borderSoft } },

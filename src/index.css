@@ -588,7 +588,7 @@ table { border-collapse: collapse; width: 100%; }
   align-items: center;
 }
 .kpi-summary-value {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--teal-dark);
   line-height: 1.1;
@@ -607,23 +607,63 @@ table { border-collapse: collapse; width: 100%; }
   text-align: left;
 }
 
-/* Capacity blocks (page 2 of PDF) */
-.capacity-block {
-  background: var(--teal-pale);
+/* Three-column layout for page 2: 2 capacity blocks + gauge */
+.summary-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+/* Gauge block (page 2 of PDF) */
+.gauge-block {
+  background: var(--white);
+  border: 1px solid var(--border-soft);
   border-radius: 12px;
-  padding: 1rem 1.1rem;
+  padding: 0.75rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
-.capacity-block-title {
+.gauge-block-title {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--teal-dark);
   text-align: center;
 }
+.gauge-scale-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--ink-soft);
+  margin-top: -10px;
+  padding: 0 12px;
+}
+.gauge-description {
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  text-align: center;
+  line-height: 1.6;
+  margin: 6px 0 4px;
+}
+
+/* Capacity blocks (page 2 of PDF) */
+.capacity-block {
+  background: var(--teal-pale);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.capacity-block-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--teal-dark);
+  text-align: center;
+}
 .capacity-block-amount {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--teal-dark);
   text-align: center;
@@ -633,17 +673,17 @@ table { border-collapse: collapse; width: 100%; }
   border-bottom: 1px dashed rgba(8, 80, 65, 0.25);
 }
 .capacity-block-amount span {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 400;
   color: var(--ink-soft);
 }
-.capacity-rows { display: flex; flex-direction: column; gap: 5px; }
+.capacity-rows { display: flex; flex-direction: column; gap: 3px; }
 .capacity-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 11.5px;
-  padding: 4px 0;
+  padding: 3px 0;
   border-bottom: 1px dashed rgba(8, 80, 65, 0.15);
 }
 .capacity-row:last-child { border-bottom: none; }
@@ -657,76 +697,12 @@ table { border-collapse: collapse; width: 100%; }
 .capacity-row-unit { font-weight: 400; color: var(--ink-soft); font-size: 10px; }
 .deg-row {
   background: rgba(255, 255, 255, 0.45);
-  padding: 4px 8px;
+  padding: 3px 8px;
   border-radius: 6px;
   border-bottom: none;
-  font-size: 11px;
+  font-size: 10.5px;
 }
 
-/* Description block (page 2 of PDF) */
-.description-block {
-  background: var(--white);
-  border: 1px solid var(--border-soft);
-  border-radius: 12px;
-  padding: 1rem 1.1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.description-block-title {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--teal-dark);
-  text-align: center;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--border-soft);
-}
-.description-text {
-  font-size: 11.5px;
-  color: var(--ink);
-  line-height: 1.8;
-  text-align: justify;
-}
-.rating-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 10px;
-}
-.rating-badge-large {
-  background: var(--teal-mid);
-  color: var(--white);
-  padding: 6px 14px;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 700;
-  text-align: center;
-  min-width: 44px;
-}
-.rating-scale { display: flex; flex-direction: column; gap: 3px; }
-.rating-scale-track {
-  position: relative;
-  height: 8px;
-  background: var(--cream-light);
-  border-radius: 4px;
-  overflow: hidden;
-}
-.rating-scale-fill {
-  height: 100%;
-  background: linear-gradient(to left, var(--teal-mid), var(--teal-light));
-}
-.rating-scale-ends {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  color: var(--ink-soft);
-}
-.rating-scale-value {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--teal-dark);
-  direction: ltr;
-}
 .sub-scores {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -738,8 +714,8 @@ table { border-collapse: collapse; width: 100%; }
   padding: 6px 4px;
   text-align: center;
 }
-.sub-score-label { font-size: 10px; color: var(--ink-soft); margin-bottom: 2px; line-height: 1.3; }
-.sub-score-value { font-size: 17px; font-weight: 700; }
+.sub-score-label { font-size: 9.5px; color: var(--ink-soft); margin-bottom: 2px; line-height: 1.3; }
+.sub-score-value { font-size: 16px; font-weight: 700; }
 .sub-score.good .sub-score-value { color: var(--success); }
 .sub-score.medium .sub-score-value { color: var(--warning); }
 .sub-score.low .sub-score-value { color: var(--danger); }
@@ -749,9 +725,26 @@ table { border-collapse: collapse; width: 100%; }
   color: var(--ink-soft);
   background: var(--cream-light);
   border-radius: 8px;
-  padding: 0.6rem 0.85rem;
-  margin-top: 1rem;
+  padding: 0.5rem 0.85rem;
+  margin-top: 0.75rem;
   line-height: 1.7;
+}
+
+/* PDF export button (loading state) */
+.export-btn.pdf-btn {
+  background: var(--teal-dark);
+  color: var(--white);
+  border-color: var(--teal-dark);
+}
+.export-btn.pdf-btn:hover {
+  background: var(--teal);
+  border-color: var(--teal);
+}
+.export-btn.pdf-btn:disabled {
+  background: var(--cream-light);
+  color: var(--ink-soft);
+  border-color: var(--border-soft);
+  cursor: wait;
 }
 
 /* ===== Capacity cards ===== */
@@ -833,25 +826,54 @@ table { border-collapse: collapse; width: 100%; }
 .chart-canvas.tall { height: 360px; }
 .chart-canvas.short { height: 220px; }
 
+/* P&L page (page 3 of PDF) — compact two-column layout */
+.pl-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.pl-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 /* Comparative pages (page 6 + 7) */
 .comparative-section {
   display: flex;
   flex-direction: column;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
+}
+.comparative-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.comparative-cell {
+  display: flex;
+  flex-direction: column;
+}
+.chart-card.compact {
+  padding: 0.7rem 0.85rem;
+}
+.chart-title.compact {
+  font-size: 12px;
+  margin-bottom: 0.3rem;
 }
 .comparative-kpi {
   background: var(--cream-light);
   border: 1px solid var(--border-soft);
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 6px 8px;
   text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
-.comparative-kpi-label { font-size: 10.5px; color: var(--ink-soft); }
+.comparative-kpi-label { font-size: 9.5px; color: var(--ink-soft); line-height: 1.3; }
 .comparative-kpi-value {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--teal-dark);
   direction: ltr;

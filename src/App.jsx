@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import YearFilter, { toFarsiDigits } from './components/YearFilter';
 import PageAbout from './components/PageAbout';
@@ -10,21 +10,23 @@ import PageComparative1 from './components/PageComparative1';
 import PageComparative2 from './components/PageComparative2';
 import PageAnalysis from './components/PageAnalysis';
 import raadData from './data/raadData.json';
-import { exportToExcel, exportElementToPdf } from './utils/exportUtils';
+import { exportAllPagesToPdf } from './utils/exportUtils';
 
-const PAGE_TITLES = {
-  about: 'درباره شرکت',
-  summary: 'خلاصه گزارش',
-  pl: 'صورت سود و زیان',
-  balance: 'ترازنامه',
-  credit: 'اعتباری',
-  comparative1: 'ارقام مقایسه‌ای (ترازنامه و صورت سود و زیان)',
-  comparative2: 'ارقام مقایسه‌ای (ترازنامه و اعتبارات)',
-  analysis: 'عارضه‌یابی اطلاعات مالی',
-};
+const PAGES = [
+  { key: 'about', label: 'درباره شرکت' },
+  { key: 'summary', label: 'خلاصه گزارش' },
+  { key: 'pl', label: 'صورت سود و زیان' },
+  { key: 'balance', label: 'ترازنامه' },
+  { key: 'credit', label: 'اعتباری' },
+  { key: 'comparative1', label: 'ارقام مقایسه‌ای (ترازنامه و سود و زیان)' },
+  { key: 'comparative2', label: 'ارقام مقایسه‌ای (ترازنامه و اعتبارات)' },
+  { key: 'analysis', label: 'عارضه‌یابی اطلاعات مالی' },
+];
 
 export default function App() {
   const [activePage, setActivePage] = useState('about');
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
   const years = useMemo(
     () => Object.keys(raadData.financialsByYear).sort((a, b) => Number(b) - Number(a)),
     []
@@ -39,28 +41,37 @@ export default function App() {
   const creditReal = raadData.creditRealByYear[selectedYear];
   const diagnosis = raadData.diagnosisByYear[selectedYear];
 
-  const handleExportExcel = () => {
-    const rows = Object.entries(raadData.financialsByYear).map(([year, f]) => ({
-      'سال مالی': year,
-      'درآمد عملیاتی': f.revenue ?? '',
-      'سود عملیاتی': f.ebit ?? '',
-      'سود خالص': f.netProfit ?? '',
-      'سود ناخالص': f.grossProfit ?? '',
-      'بهای تمام‌شده': f.costOfRevenue ?? '',
-      'مجموع دارایی‌ها': f.totalAssets ?? '',
-      'دارایی جاری': f.totalCurrentAssets ?? '',
-      'بدهی جاری': f.totalCurrentLiabilities ?? '',
-      'مجموع بدهی‌ها': f.totalLiabilities ?? '',
-      'حقوق صاحبان سهام': f.equities ?? '',
-      'سرمایه ثبتی': f.stock ?? '',
-      'تسهیلات فعال بانکی': f.activeBankFacility ?? '',
-    }));
-    exportToExcel(rows, 'گزارش مالی', `raad-financials-${selectedYear}.xlsx`);
+  const setActivePageRef = useRef(setActivePage);
+  setActivePageRef.current = setActivePage;
+
+  const handleExportPdf = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    setExportProgress(0);
+    try {
+      // Set the active page in sequence, then capture and add to PDF.
+      const setActiveAndWait = async (key) => {
+        setActivePageRef.current(key);
+        await new Promise((r) => setTimeout(r, 400));
+      };
+      // We pass a custom setter that also updates progress.
+      await exportAllPagesToPdf(
+        PAGES,
+        async (key) => {
+          await setActiveAndWait(key);
+          setExportProgress((p) => p + 1);
+        },
+        `raad-report-${selectedYear}.pdf`,
+        'export-root'
+      );
+    } finally {
+      // Restore the original page after export.
+      setActivePage(activePage);
+      setIsExporting(false);
+    }
   };
 
-  const handleExportPdf = () => {
-    exportElementToPdf('export-root', `raad-report-${activePage}-${selectedYear}.pdf`);
-  };
+  const currentPage = PAGES.find((p) => p.key === activePage);
 
   return (
     <div className="dashboard-shell">
@@ -68,15 +79,18 @@ export default function App() {
 
       <div className="main-area">
         <header className="topbar">
-          <div className="topbar-title">{PAGE_TITLES[activePage]}</div>
+          <div className="topbar-title">{currentPage?.label}</div>
           <div className="topbar-actions">
             <YearFilter years={years} selected={selectedYear} onChange={setSelectedYear} />
             <div className="export-actions">
-              <button className="export-btn" onClick={handleExportExcel}>
-                خروجی اکسل
-              </button>
-              <button className="export-btn" onClick={handleExportPdf}>
-                خروجی PDF
+              <button
+                className="export-btn pdf-btn"
+                onClick={handleExportPdf}
+                disabled={isExporting}
+              >
+                {isExporting
+                  ? `در حال تولید PDF... (${exportProgress}/${PAGES.length})`
+                  : 'خروجی PDF (تمام صفحات)'}
               </button>
             </div>
           </div>

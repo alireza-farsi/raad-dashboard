@@ -1,30 +1,17 @@
 import ReactECharts from 'echarts-for-react';
 import { useMemo } from 'react';
 import { toFa } from '../utils/format';
-import { PALETTE, baseGrid, baseTooltip, baseLegend, faValueAxis, faCategoryAxis } from '../utils/echartsTheme';
+import { PALETTE, baseGrid, baseTooltip, baseLegend, faValueAxis, faCategoryAxis, FONT } from '../utils/echartsTheme';
 
 // Page 4 of the PDF: "ترازنامه"
-// Layout:
-//   1) Two side-by-side tables:
-//        LEFT (liabilities + equity):
-//          - حقوق مالکانه (4 rows): ذخیره قانونی, سرمایه ثبتی, سود (زیان) انباشت, جمع حقوق مالکانه
-//          - بدهی های غیرجاری (3 rows): تسهیلات بلندمدت, حساب‌ها و بدهی‌های بلندمدت, جمع بدهی های غیرجاری
-//          - بدهی های جاری (7 rows): حساب‌های پرداختنی, سایر حساب‌های پرداختنی, تسهیلات مالی کوتاه‌مدت,
-//              پیش‌دریافت‌ها, جاری شرکا, سایر بدهی‌های جاری, جمع بدهی های جاری
-//          - جمع حقوق مالکانه و بدهی ها (total)
-//        RIGHT (assets):
-//          - دارایی های غیرجاری (3 rows): دارایی ثابت مشهود, دارایی ثابت نامشهود, جمع دارایی های غیرجاری
-//          - دارایی های جاری (9 rows): پیش‌پرداخت‌ها, موجودی مواد و کالا, حساب‌های دریافتنی,
-//              سایر حساب‌های دریافتنی, جاری شرکا, موجود نقد و بانک, سرمایه‌گذاری‌های کوتاه‌مدت,
-//              سایر دارایی‌های جاری, جمع دارایی های جاری
-//          - جمع دارایی‌ها (total)
-//        Years: 1400, 1401, 1402, 1402 (duplicated in PDF — we use 1400-1403)
-//   2) Chart 1: روند حساب‌های پرداختنی، دریافتی و تسهیلات مالی
-//        3 lines: حساب‌های پرداختنی, حساب‌های دریافتنی, تسهیلات مالی — years 1396-1404
-//   3) Chart 2: روند تغییرات سرمایه در گردش به ترند دارایی‌ها
-//        3 lines: دارایی‌های جاری, مجموع دارایی‌ها, سرمایه در گردش — years 1396-1404
+// Compact layout — everything fits on one screen:
+//   Top: two side-by-side balance-sheet tables (liabs+equity on the right,
+//        assets on the left) with 4 year columns each
+//   Bottom: two trend charts side-by-side
+//        1) روند حساب‌های پرداختنی، دریافتی و تسهیلات مالی
+//        2) روند تغییرات سرمایه در گردش به ترند دارایی‌ها
 
-const BALANCE_YEARS = ['1400', '1401', '1402', '1403']; // 4 distinct years
+const BALANCE_YEARS = ['1400', '1401', '1402', '1403'];
 const TREND_YEARS = ['1396', '1397', '1398', '1399', '1400', '1401', '1402', '1403', '1404'];
 
 const LEFT_GROUPS = [
@@ -43,7 +30,6 @@ const LEFT_GROUPS = [
       { key: 'longTermLoans', label: 'تسهیلات بلندمدت' },
       { key: 'longTermLiabilities', label: 'حساب‌ها و بدهی‌های بلندمدت' },
       { key: 'longTermLiabilities', label: 'جمع بدهی های غیرجاری', type: 'subtotal',
-        // Sum long-term loans + long-term liabs for the total
         aggregate: (b) => (b?.longTermLoans ?? 0) + (b?.longTermLiabilities ?? 0) || null,
       },
     ],
@@ -103,19 +89,18 @@ const RIGHT_GROUPS = [
 ];
 
 export default function PageBalance({ balance, year, allBalances }) {
-  // ----- Chart 1: accounts payable / receivable / financial facilities -----
   const payRecvTrendOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 40, bottom: 40 },
+    grid: { ...baseGrid, top: 40, bottom: 30 },
     tooltip: { ...baseTooltip },
     legend: { ...baseLegend, data: ['حساب‌های پرداختنی', 'حساب‌های دریافتنی', 'تسهیلات مالی'] },
     xAxis: { type: 'category', data: TREND_YEARS, ...faCategoryAxis() },
-    yAxis: { type: 'value', ...faValueAxis({ compact: true }) },
+    yAxis: { type: 'value', ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
     series: [
       {
         name: 'حساب‌های پرداختنی',
         type: 'line',
         data: TREND_YEARS.map((y) => allBalances[y]?.totalAccountsPayable ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 6,
+        smooth: true, symbol: 'circle', symbolSize: 5,
         lineStyle: { color: PALETTE.teal, width: 2.5 },
         itemStyle: { color: PALETTE.teal },
       },
@@ -123,7 +108,7 @@ export default function PageBalance({ balance, year, allBalances }) {
         name: 'حساب‌های دریافتنی',
         type: 'line',
         data: TREND_YEARS.map((y) => allBalances[y]?.totalAccountsReceivable ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 6,
+        smooth: true, symbol: 'circle', symbolSize: 5,
         lineStyle: { color: PALETTE.tealDark, width: 2.5 },
         itemStyle: { color: PALETTE.tealDark },
       },
@@ -133,26 +118,25 @@ export default function PageBalance({ balance, year, allBalances }) {
         data: TREND_YEARS.map((y) =>
           (allBalances[y]?.shortTermLoans ?? 0) + (allBalances[y]?.longTermLoans ?? 0) || null
         ),
-        smooth: true, symbol: 'diamond', symbolSize: 6,
+        smooth: true, symbol: 'diamond', symbolSize: 5,
         lineStyle: { color: PALETTE.gold, width: 2.5 },
         itemStyle: { color: PALETTE.gold },
       },
     ],
   }), [allBalances]);
 
-  // ----- Chart 2: working capital vs assets trend -----
   const wcAssetsTrendOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 40, bottom: 40 },
+    grid: { ...baseGrid, top: 40, bottom: 30 },
     tooltip: { ...baseTooltip },
     legend: { ...baseLegend, data: ['دارایی‌های جاری', 'مجموع دارایی‌ها', 'سرمایه در گردش'] },
     xAxis: { type: 'category', data: TREND_YEARS, ...faCategoryAxis() },
-    yAxis: { type: 'value', ...faValueAxis({ compact: true }) },
+    yAxis: { type: 'value', ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
     series: [
       {
         name: 'دارایی‌های جاری',
         type: 'line',
         data: TREND_YEARS.map((y) => allBalances[y]?.totalCurrentAssets ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 6,
+        smooth: true, symbol: 'circle', symbolSize: 5,
         lineStyle: { color: PALETTE.teal, width: 2.5 },
         itemStyle: { color: PALETTE.teal },
       },
@@ -160,7 +144,7 @@ export default function PageBalance({ balance, year, allBalances }) {
         name: 'مجموع دارایی‌ها',
         type: 'line',
         data: TREND_YEARS.map((y) => allBalances[y]?.totalAssets ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 6,
+        smooth: true, symbol: 'circle', symbolSize: 5,
         lineStyle: { color: PALETTE.tealDark, width: 2.5 },
         itemStyle: { color: PALETTE.tealDark },
       },
@@ -173,7 +157,7 @@ export default function PageBalance({ balance, year, allBalances }) {
           if (ca === null || ca === undefined || cl === null || cl === undefined) return null;
           return ca - cl;
         }),
-        smooth: true, symbol: 'diamond', symbolSize: 6,
+        smooth: true, symbol: 'diamond', symbolSize: 5,
         lineStyle: { color: PALETTE.gold, width: 2.5, type: 'dashed' },
         itemStyle: { color: PALETTE.gold },
       },
@@ -182,8 +166,8 @@ export default function PageBalance({ balance, year, allBalances }) {
 
   return (
     <div className="page-inner">
+      {/* Top: two side-by-side tables */}
       <div className="grid-2col" style={{ alignItems: 'stretch' }}>
-        {/* LEFT TABLE: liabilities + equity */}
         <div className="card">
           <table className="statement-table">
             <thead>
@@ -204,7 +188,6 @@ export default function PageBalance({ balance, year, allBalances }) {
           </table>
         </div>
 
-        {/* RIGHT TABLE: assets */}
         <div className="card">
           <table className="statement-table">
             <thead>
@@ -226,20 +209,20 @@ export default function PageBalance({ balance, year, allBalances }) {
         </div>
       </div>
 
-      <div className="unit-note" style={{ marginTop: 4, marginBottom: 12 }}>
+      <div className="unit-note" style={{ marginTop: 4, marginBottom: 8 }}>
         تمامی ارقام به میلیارد تومان می‌باشد.
       </div>
 
-      {/* Chart 1 */}
-      <div className="chart-card">
-        <div className="chart-title">روند حساب‌های پرداختنی، دریافتی و تسهیلات مالی</div>
-        <ReactECharts option={payRecvTrendOption} style={{ height: 320 }} />
-      </div>
-
-      {/* Chart 2 */}
-      <div className="chart-card">
-        <div className="chart-title">روند تغییرات سرمایه در گردش به ترند دارایی‌ها</div>
-        <ReactECharts option={wcAssetsTrendOption} style={{ height: 320 }} />
+      {/* Bottom: two charts side-by-side */}
+      <div className="grid-2col">
+        <div className="chart-card compact">
+          <div className="chart-title compact">روند حساب‌های پرداختنی، دریافتی و تسهیلات مالی</div>
+          <ReactECharts option={payRecvTrendOption} style={{ height: 220 }} />
+        </div>
+        <div className="chart-card compact">
+          <div className="chart-title compact">روند تغییرات سرمایه در گردش به ترند دارایی‌ها</div>
+          <ReactECharts option={wcAssetsTrendOption} style={{ height: 220 }} />
+        </div>
       </div>
     </div>
   );
@@ -259,7 +242,7 @@ function GroupRows({ group, allBalances, years }) {
         const isTotal = it.type === 'total';
         const isSubtotal = it.type === 'subtotal';
         return (
-          <tr key={it.key} className={isTotal ? 'total' : isSubtotal ? 'subtotal' : ''}>
+          <tr key={it.key + it.label} className={isTotal ? 'total' : isSubtotal ? 'subtotal' : ''}>
             <td>
               <div className="row-label">
                 <span className="indent-1" />

@@ -1,25 +1,16 @@
 import ReactECharts from 'echarts-for-react';
 import { useMemo } from 'react';
-import { toFa, fmtNum } from '../utils/format';
-import { PALETTE, baseGrid, baseTooltip, baseLegend, faValueAxis, faCategoryAxis } from '../utils/echartsTheme';
+import { toFa } from '../utils/format';
+import { PALETTE, baseGrid, baseTooltip, baseLegend, faValueAxis, faCategoryAxis, FONT } from '../utils/echartsTheme';
 
 // Page 5 of the PDF: "اعتباری"
-// Layout:
-//   1) Title at the top: "سال پایه ارقام اعتباری ۱۴۰۴ در نظر گرفته شده است."
-//   2) Four lists (top section):
-//        - بانک‌های ارائه دهنده تسهیلات (list of bank names with logos)
-//        - سایر نهادهای ارائه‌دهنده تسهیلات (other funds)
-//        - بانک‌های ناشر ضمانت نامه
-//        - صندوق‌های ناشر ضمانت نامه
-//   3) Chart: "مقایسه روند درآمدی با تسهیلات دریافتی" — 3 lines:
-//        درآمد عملیاتی, وام بانکی, وام غیربانکی — years 1398-1403
-//   4) Table "توضیحات / شاخص" — 7 rows: دیرکرد وام, بدحسابی بانک مرکزی,
-//      لیست سیاه صندوقی, چک برگشتی, وجود ضمانت‌نامه, وام‌ها در سیستم بانکی,
-//      وام‌های غیربانکی
+// Layout (compact, fits on one screen):
+//   Top: 4-list grid for banks/funds
+//   Middle: comparison chart (full width)
+//   Bottom: 7-row indicators table
 
 const CREDIT_YEARS = ['1398', '1399', '1400', '1401', '1402', '1403'];
 
-// Code -> label mapping for the diagnosis rows on this page.
 const DIAGNOSIS_KEYS = [
   { key: 'Loan_Dirkard_bt', label: 'دیرکرد وام' },
   { key: 'FacBadhesabi', label: 'بدحسابی بانک مرکزی' },
@@ -39,7 +30,6 @@ export default function PageCredit({
   year,
 }) {
   const diagnosis = diagnosisByYear?.[year];
-  // Pull the behavior-category items into a map keyed by indicator key.
   const behaviorMap = useMemo(() => {
     const m = {};
     (diagnosis?.creditBehavior || []).forEach((r) => {
@@ -49,11 +39,11 @@ export default function PageCredit({
   }, [diagnosis]);
 
   const comparisonTrendOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 40, bottom: 40 },
+    grid: { ...baseGrid, top: 40, bottom: 30 },
     tooltip: { ...baseTooltip },
     legend: { ...baseLegend, data: ['درآمد عملیاتی', 'وام بانکی', 'وام غیربانکی'] },
     xAxis: { type: 'category', data: CREDIT_YEARS, ...faCategoryAxis() },
-    yAxis: { type: 'value', ...faValueAxis({ compact: true }) },
+    yAxis: { type: 'value', ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
     series: [
       {
         name: 'درآمد عملیاتی',
@@ -95,10 +85,10 @@ export default function PageCredit({
         <BankListCard title="صندوق‌های ناشر ضمانت نامه" items={banks.guaranteeFunds} />
       </div>
 
-      <div className="chart-card">
-        <div className="chart-title">مقایسه روند درآمدی با تسهیلات دریافتی</div>
-        <ReactECharts option={comparisonTrendOption} style={{ height: 320 }} />
-        <div className="unit-note" style={{ marginTop: 8, marginBottom: 0 }}>
+      <div className="chart-card compact">
+        <div className="chart-title compact">مقایسه روند درآمدی با تسهیلات دریافتی</div>
+        <ReactECharts option={comparisonTrendOption} style={{ height: 260 }} />
+        <div className="unit-note" style={{ marginTop: 6, marginBottom: 0 }}>
           تمامی ارقام به میلیارد تومان می‌باشد.
         </div>
       </div>
