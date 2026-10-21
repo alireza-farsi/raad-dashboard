@@ -5,7 +5,7 @@ import CreditRating from './CreditRating';
 // Layout (matches the UI-sample design):
 //   1) Strip of 7 KPI cards (white rounded cards, PDF page 3 style)
 //   2) Row of 2 teal capacity cards (PDF page 3 accent cards)
-//   3) Datanet-style credit rating block (badge + AAA→D scale + sub-scores)
+//   3) Credit rating block — simple logic + needle gauge on a 300-900 scale
 
 export default function PageSummary({ financials, credit, creditReal, year }) {
   const hasCredit = !!credit;
