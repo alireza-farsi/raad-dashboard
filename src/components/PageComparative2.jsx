@@ -1,33 +1,21 @@
 import EChart from './EChart';
 import { useMemo } from 'react';
 import { toFa } from '../utils/format';
-import { PALETTE, baseGrid, baseTooltip, baseLegend, faValueAxis, faCategoryAxis, FONT } from '../utils/echartsTheme';
+import {
+  PALETTE, makeGrid, makeTooltip, makeLegend, valueAxis, ratioAxis,
+  categoryAxis, barSeries, lineSeries, niceMax, faNum,
+} from '../utils/echartsTheme';
 
-// Page 7 of the PDF: "ارقام مقایسه‌ای (ترازنامه و اعتبارات)"
-// 4 sections in a 2x2 grid. Each section: chart on top, KPI strip below.
-// All charts use dual y-axes — bars on the left (financial amounts in
-// billion toman) and a line on the right (a unitless ratio). Each axis
-// has explicit min: 0 and a max derived from the data so the bars/lines
-// don't collapse to invisible when one year's value is much larger.
+// "ارقام مقایسه‌ای (ترازنامه و اعتبارات)" — 4 sections in a 2x2 grid.
+// Each section: REBUILT dual-axis chart on top (gradient bars for amounts +
+// smooth ratio line on the right axis) and a KPI strip below.
+// Axis max values are derived from the data via niceMax so nothing collapses.
 
+// Two year ranges: balance/ratio data covers 1396-1404, credit-facility
+// data only exists from 1398 (values from 1401), so credit sections use a
+// shorter range that still shows the "no facilities" period.
 const TREND_YEARS = ['1396', '1397', '1398', '1399', '1400', '1401', '1402', '1403'];
-
-// Compute a clean "nice" max for an axis from a list of values.
-function niceMax(values, fallback = 1) {
-  const valid = values.filter((v) => v !== null && v !== undefined && !Number.isNaN(v));
-  if (valid.length === 0) return fallback;
-  const max = Math.max(...valid);
-  if (max <= 0) return fallback;
-  // Round up to next "nice" number
-  const mag = Math.pow(10, Math.floor(Math.log10(max)));
-  const norm = max / mag;
-  let nice;
-  if (norm <= 1) nice = 1;
-  else if (norm <= 2) nice = 2;
-  else if (norm <= 5) nice = 5;
-  else nice = 10;
-  return nice * mag;
-}
+const CREDIT_YEARS = ['1398', '1399', '1400', '1401', '1402', '1403', '1404'];
 
 export default function PageComparative2({
   balanceByYear,
@@ -41,12 +29,12 @@ export default function PageComparative2({
   const cr = creditRealByYear[year] || {};
 
   // Pre-compute the data arrays so we can derive axis max from them.
-  const activeLoanData = TREND_YEARS.map((y) => creditRealByYear[y]?.activeBankFacility ?? null);
-  const quickRatioData = TREND_YEARS.map((y) => ratiosByYear[y]?.quickRatio ?? null);
+  const activeLoanData = CREDIT_YEARS.map((y) => creditRealByYear[y]?.activeBankFacility ?? null);
+  const quickRatioData = CREDIT_YEARS.map((y) => ratiosByYear[y]?.quickRatio ?? null);
   const totalLiabData = TREND_YEARS.map((y) => balanceByYear[y]?.totalLiabilities ?? null);
   const equityRatioData = TREND_YEARS.map((y) => ratiosByYear[y]?.equityRatio ?? null);
-  const guarTahodData = TREND_YEARS.map((y) => creditRealByYear[y]?.guarTahod ?? null);
-  const loanToEquityData = TREND_YEARS.map((y) => {
+  const guarTahodData = CREDIT_YEARS.map((y) => creditRealByYear[y]?.guarTahod ?? null);
+  const loanToEquityData = CREDIT_YEARS.map((y) => {
     const loan = creditRealByYear[y]?.activeBankFacility;
     const eq = balanceByYear[y]?.equities;
     if (loan === null || loan === undefined || eq === null || eq === undefined || eq === 0) return null;
@@ -55,146 +43,93 @@ export default function PageComparative2({
   const currentAssetsData = TREND_YEARS.map((y) => balanceByYear[y]?.totalCurrentAssets ?? null);
   const currentRatioData = TREND_YEARS.map((y) => ratiosByYear[y]?.currentRatio ?? null);
 
-  // ----- Section 1: نسبت آنی + وام فعال بانکی -----
+  // ── Section 1 (REBUILT): quick ratio + active bank loan ──
   const quickOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 40, bottom: 30 },
-    tooltip: {
-      ...baseTooltip,
-      valueFormatter: (val, p) => p?.seriesName === 'نسبت آنی' ? toFa(val.toFixed(2)) : toFa(val.toFixed(1)),
-    },
-    legend: { ...baseLegend, data: ['وام فعال بانکی', 'نسبت آنی'] },
-    xAxis: { type: 'category', data: TREND_YEARS, ...faCategoryAxis() },
+    grid: makeGrid({ top: 46 }),
+    tooltip: makeTooltip((val, p) => (p?.seriesName === 'نسبت آنی' ? faNum(val, 2) : faNum(val, 1))),
+    legend: makeLegend(['وام فعال بانکی', 'نسبت آنی']),
+    xAxis: categoryAxis(CREDIT_YEARS),
     yAxis: [
-      { type: 'value', min: 0, max: niceMax(activeLoanData, 300), ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
-      { type: 'value', min: 0, max: niceMax(quickRatioData, 3), name: 'نسبت', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 }, splitLine: { show: false }, axisLabel: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 11, formatter: (v) => toFa(v.toFixed(1)) } },
+      valueAxis({ max: niceMax(activeLoanData, 300) * 1.08 }),
+      ratioAxis({ max: niceMax(quickRatioData, 3) * 1.15, decimals: 1 }),
     ],
     series: [
-      {
-        name: 'وام فعال بانکی',
-        type: 'bar',
-        data: activeLoanData,
-        itemStyle: { color: PALETTE.gold, borderRadius: [4, 4, 0, 0] },
-        barWidth: 14,
-      },
-      {
+      barSeries({ name: 'وام فعال بانکی', data: activeLoanData, color: PALETTE.gold, barWidth: 16 }),
+      lineSeries({
         name: 'نسبت آنی',
-        type: 'line',
         data: quickRatioData,
-        smooth: true, symbol: 'circle', symbolSize: 7,
-        lineStyle: { color: PALETTE.tealDark, width: 2.5 },
-        itemStyle: { color: PALETTE.tealDark },
+        color: PALETTE.tealDark,
         yAxisIndex: 1,
-      },
+        width: 3,
+      }),
     ],
   }), [activeLoanData, quickRatioData]);
 
-  // ----- Section 2: ownership ratio trend -----
+  // ── Section 2 (REBUILT): ownership ratio trend ──
   const equityOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 40, bottom: 30 },
-    tooltip: {
-      ...baseTooltip,
-      valueFormatter: (val, p) => p?.seriesName === 'نسبت مالکانه' ? toFa((val * 100).toFixed(0)) + '٪' : toFa(val.toFixed(1)),
-    },
-    legend: { ...baseLegend, data: ['مجموع بدهی‌ها', 'نسبت مالکانه'] },
-    xAxis: { type: 'category', data: TREND_YEARS, ...faCategoryAxis() },
+    grid: makeGrid({ top: 46 }),
+    tooltip: makeTooltip((val, p) => (p?.seriesName === 'نسبت مالکانه' ? faNum(val * 100, 0) + '٪' : faNum(val, 1))),
+    legend: makeLegend(['مجموع بدهی‌ها', 'نسبت مالکانه']),
+    xAxis: categoryAxis(TREND_YEARS),
     yAxis: [
-      { type: 'value', min: 0, max: niceMax(totalLiabData, 1000), ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
-      {
-        type: 'value', min: 0, max: 1, name: 'نسبت', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 },
-        splitLine: { show: false },
-        axisLabel: {
-          fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 11,
-          formatter: (v) => toFa((v * 100).toFixed(0)) + '٪',
-        },
-      },
+      valueAxis({ max: niceMax(totalLiabData, 1000) * 1.08 }),
+      ratioAxis({ max: 1, decimals: 1, name: 'درصد' }),
     ],
     series: [
-      {
-        name: 'مجموع بدهی‌ها',
-        type: 'bar',
-        data: totalLiabData,
-        itemStyle: { color: PALETTE.danger, borderRadius: [4, 4, 0, 0] },
-        barWidth: 14,
-      },
-      {
+      barSeries({ name: 'مجموع بدهی‌ها', data: totalLiabData, color: PALETTE.slate, barWidth: 16 }),
+      lineSeries({
         name: 'نسبت مالکانه',
-        type: 'line',
         data: equityRatioData,
-        smooth: true, symbol: 'diamond', symbolSize: 7,
-        lineStyle: { color: PALETTE.tealDark, width: 2.5 },
-        itemStyle: { color: PALETTE.tealDark },
+        color: PALETTE.teal,
         yAxisIndex: 1,
-      },
+        width: 3,
+      }),
     ],
   }), [totalLiabData, equityRatioData]);
 
-  // ----- Section 3: active loan vs equity ratio -----
-  const loanEquityOption = useMemo(() => {
-    // Multiply the ratio by 10 so the line isn't squashed at the bottom
-    // of a 0-1 axis next to bars that go up to 6.
-    return {
-      grid: { ...baseGrid, top: 40, bottom: 30 },
-      tooltip: {
-        ...baseTooltip,
-        valueFormatter: (val, p) => p?.seriesName === 'نسبت وام فعال به ح.ص.س' ? toFa(val.toFixed(2)) : toFa(val.toFixed(2)),
-      },
-      legend: { ...baseLegend, data: ['ضمانت‌نامه فعال بانکی', 'نسبت وام فعال به ح.ص.س'] },
-      xAxis: { type: 'category', data: TREND_YEARS, ...faCategoryAxis() },
-      yAxis: [
-        { type: 'value', min: 0, max: niceMax(guarTahodData, 10), ...faValueAxis({ compact: false, decimals: 1 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
-        { type: 'value', min: 0, max: niceMax(loanToEquityData, 1), name: 'نسبت', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 }, splitLine: { show: false }, axisLabel: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 11, formatter: (v) => toFa(v.toFixed(2)) } },
-      ],
-      series: [
-        {
-          name: 'ضمانت‌نامه فعال بانکی',
-          type: 'bar',
-          data: guarTahodData,
-          itemStyle: { color: PALETTE.gold, borderRadius: [4, 4, 0, 0] },
-          barWidth: 14,
-        },
-        {
-          name: 'نسبت وام فعال به ح.ص.س',
-          type: 'line',
-          data: loanToEquityData,
-          smooth: true, symbol: 'diamond', symbolSize: 7,
-          lineStyle: { color: PALETTE.tealDark, width: 2.5 },
-          itemStyle: { color: PALETTE.tealDark },
-          yAxisIndex: 1,
-        },
-      ],
-    };
-  }, [guarTahodData, loanToEquityData]);
-
-  // ----- Section 4: current ratio trend -----
-  const currentRatioOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 40, bottom: 30 },
-    tooltip: {
-      ...baseTooltip,
-      valueFormatter: (val, p) => p?.seriesName === 'نسبت جاری' ? toFa(val.toFixed(2)) : toFa(val.toFixed(1)),
-    },
-    legend: { ...baseLegend, data: ['دارایی‌های جاری', 'نسبت جاری'] },
-    xAxis: { type: 'category', data: TREND_YEARS, ...faCategoryAxis() },
+  // ── Section 3 (REBUILT): active guarantees vs loan-to-equity ratio ──
+  const loanEquityOption = useMemo(() => ({
+    grid: makeGrid({ top: 46 }),
+    tooltip: makeTooltip((val, p) => (p?.seriesName === 'نسبت وام فعال به ح.ص.س' ? faNum(val, 2) : faNum(val, 1))),
+    legend: makeLegend(['ضمانت‌نامه فعال بانکی', 'نسبت وام فعال به ح.ص.س']),
+    xAxis: categoryAxis(CREDIT_YEARS),
     yAxis: [
-      { type: 'value', min: 0, max: niceMax(currentAssetsData, 1000), ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
-      { type: 'value', min: 0, max: niceMax(currentRatioData, 3), name: 'نسبت', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 }, splitLine: { show: false }, axisLabel: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 11, formatter: (v) => toFa(v.toFixed(1)) } },
+      valueAxis({ max: niceMax(guarTahodData, 10) * 1.1, decimals: 0 }),
+      ratioAxis({ max: niceMax(loanToEquityData, 1) * 1.15, decimals: 2 }),
     ],
     series: [
-      {
-        name: 'دارایی‌های جاری',
-        type: 'bar',
-        data: currentAssetsData,
-        itemStyle: { color: PALETTE.teal, borderRadius: [4, 4, 0, 0] },
-        barWidth: 14,
-      },
-      {
-        name: 'نسبت جاری',
-        type: 'line',
-        data: currentRatioData,
-        smooth: true, symbol: 'diamond', symbolSize: 7,
-        lineStyle: { color: PALETTE.tealDark, width: 2.5 },
-        itemStyle: { color: PALETTE.tealDark },
+      barSeries({ name: 'ضمانت‌نامه فعال بانکی', data: guarTahodData, color: PALETTE.teal, barWidth: 16 }),
+      lineSeries({
+        name: 'نسبت وام فعال به ح.ص.س',
+        data: loanToEquityData,
+        color: PALETTE.gold,
+        symbol: 'diamond',
         yAxisIndex: 1,
-      },
+        width: 3,
+      }),
+    ],
+  }), [guarTahodData, loanToEquityData]);
+
+  // ── Section 4 (REBUILT): current ratio trend ──
+  const currentRatioOption = useMemo(() => ({
+    grid: makeGrid({ top: 46 }),
+    tooltip: makeTooltip((val, p) => (p?.seriesName === 'نسبت جاری' ? faNum(val, 2) : faNum(val, 1))),
+    legend: makeLegend(['دارایی‌های جاری', 'نسبت جاری']),
+    xAxis: categoryAxis(TREND_YEARS),
+    yAxis: [
+      valueAxis({ max: niceMax(currentAssetsData, 1000) * 1.08 }),
+      ratioAxis({ max: niceMax(currentRatioData, 3) * 1.15, decimals: 1 }),
+    ],
+    series: [
+      barSeries({ name: 'دارایی‌های جاری', data: currentAssetsData, color: PALETTE.slate, barWidth: 16 }),
+      lineSeries({
+        name: 'نسبت جاری',
+        data: currentRatioData,
+        color: PALETTE.teal,
+        symbol: 'diamond',
+        yAxisIndex: 1,
+        width: 3,
+      }),
     ],
   }), [currentAssetsData, currentRatioData]);
 
@@ -232,23 +167,23 @@ export default function PageComparative2({
     <div className="page-inner">
       <div className="comparative-grid">
         <Section
-          title="روند وام فعال به نسبت حقوق صاحبان سهام"
-          chart={<EChart option={quickOption} style={{ height: 220 }} />}
+          title="روند وام فعال بانکی و نسبت آنی"
+          chart={<EChart option={quickOption} style={{ height: 230 }} />}
           kpis={section1Kpis}
         />
         <Section
           title="روند تغییرات نسبت مالکانه"
-          chart={<EChart option={equityOption} style={{ height: 220 }} />}
+          chart={<EChart option={equityOption} style={{ height: 230 }} />}
           kpis={section2Kpis}
         />
         <Section
-          title="روند وام فعال به نسبت حقوق صاحبان سهام"
-          chart={<EChart option={loanEquityOption} style={{ height: 220 }} />}
+          title="روند ضمانت‌نامه فعال و نسبت وام به حقوق صاحبان سهام"
+          chart={<EChart option={loanEquityOption} style={{ height: 230 }} />}
           kpis={section3Kpis}
         />
         <Section
           title="روند تغییرات نسبت جاری"
-          chart={<EChart option={currentRatioOption} style={{ height: 220 }} />}
+          chart={<EChart option={currentRatioOption} style={{ height: 230 }} />}
           kpis={section4Kpis}
         />
       </div>

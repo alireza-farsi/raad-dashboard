@@ -1,25 +1,25 @@
 import EChart from './EChart';
 import { useMemo } from 'react';
 import { toFa } from '../utils/format';
-import { PALETTE, baseGrid, baseTooltip, baseLegend, faValueAxis, faCategoryAxis, FONT } from '../utils/echartsTheme';
+import {
+  PALETTE, makeGrid, makeTooltip, makeLegend, valueAxis, ratioAxis,
+  categoryAxis, barSeries, lineSeries, niceMax, faNum,
+} from '../utils/echartsTheme';
 
-// Page 6 of the PDF: "ارقام مقایسه‌ای (ترازنامه و صورت سود و زیان)"
-// 4 sections arranged in a 2x2 grid, each with a chart on top and a KPI
-// strip below it. All charts use a single value axis per series so values
-// don't run into each other.
+// "ارقام مقایسه‌ای (ترازنامه و صورت سود و زیان)" — 4 sections in a 2x2
+// grid, each with a REBUILT chart on top and a KPI strip below.
 //
-//   1) روند تغییرات نسبت پوشش بهره — line chart of نسبت پوشش بهره (right axis)
-//      with bars for سود عملیاتی / هزینه مالی (left axis)
-//   2) مقایسه روند بدهی‌ها با حقوق صاحبان سهام — 4 lines on single axis
-//   3) روند سودآوری — 4 lines on single axis
-//   4) مقایسه روند دارایی‌ها با سرمایه ثبتی — 3 lines on single axis
+//   1) روند تغییرات نسبت پوشش بهره — gradient bars (سود عملیاتی / هزینه مالی)
+//      + gold ratio line (right axis)
+//   2) مقایسه روند بدهی‌ها با حقوق صاحبان سهام — 4 smooth lines
+//   3) روند سودآوری — 4 smooth lines
+//   4) مقایسه روند دارایی‌ها با سرمایه ثبتی — 3 smooth lines
 
 const SHORT_YEARS = ['1398', '1399', '1400', '1401', '1402', '1403'];
 const LONG_YEARS = ['1396', '1397', '1398', '1399', '1400', '1401', '1402', '1403', '1404'];
 
-// Years are kept as Latin-digit strings because they're used as keys to look
-// up data in incomeByYear / balanceByYear / ratiosByYear. The faCategoryAxis
-// helper renders them as Persian digits on screen.
+// Years are Latin-digit keys into the by-year data maps; categoryAxis()
+// renders them as Persian digits on screen.
 
 export default function PageComparative1({
   incomeByYear,
@@ -28,169 +28,127 @@ export default function PageComparative1({
   financialsByYear,
   year,
 }) {
-  // ----- Section 1: Interest coverage ratio trend -----
-  // Bar (left axis): سود عملیاتی, هزینه مالی
-  // Line (right axis): نسبت پوشش بهره (0-1 scale on right, shown as ratio)
-  const coverageOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 50, bottom: 30 },
-    tooltip: {
-      ...baseTooltip,
-      valueFormatter: (val, p) => {
-        if (p?.seriesName === 'نسبت پوشش بهره') return toFa(val.toFixed(2));
-        return toFa(val.toFixed(1));
-      },
-    },
-    legend: { ...baseLegend, data: ['سود عملیاتی', 'هزینه مالی', 'نسبت پوشش بهره'] },
-    xAxis: { type: 'category', data: SHORT_YEARS, ...faCategoryAxis() },
-    yAxis: [
-      { type: 'value', ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
-      { type: 'value', name: 'نسبت', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 }, splitLine: { show: false }, axisLabel: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 11, formatter: (v) => toFa(v.toFixed(1)) } },
-    ],
-    series: [
-      {
-        name: 'سود عملیاتی',
-        type: 'bar',
-        data: SHORT_YEARS.map((y) => incomeByYear[y]?.ebit ?? null),
-        itemStyle: { color: PALETTE.teal, borderRadius: [4, 4, 0, 0] },
-        barWidth: 12,
-      },
-      {
-        name: 'هزینه مالی',
-        type: 'bar',
-        data: SHORT_YEARS.map((y) => incomeByYear[y]?.interestExpense ?? null),
-        itemStyle: { color: PALETTE.danger, borderRadius: [4, 4, 0, 0] },
-        barWidth: 12,
-      },
-      {
-        name: 'نسبت پوشش بهره',
-        type: 'line',
-        data: SHORT_YEARS.map((y) => ratiosByYear[y]?.interestCoverage ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 7,
-        lineStyle: { color: PALETTE.gold, width: 2.5 },
-        itemStyle: { color: PALETTE.gold },
-        yAxisIndex: 1,
-      },
-    ],
-  }), [incomeByYear, ratiosByYear]);
+  // ── Section 1 (REBUILT): interest coverage — bars + gold ratio line ──
+  const coverageOption = useMemo(() => {
+    const ebitData = SHORT_YEARS.map((y) => incomeByYear[y]?.ebit ?? null);
+    const intData = SHORT_YEARS.map((y) => incomeByYear[y]?.interestExpense ?? null);
+    const covData = SHORT_YEARS.map((y) => ratiosByYear[y]?.interestCoverage ?? null);
+    return {
+      grid: makeGrid({ top: 50 }),
+      tooltip: makeTooltip((val, p) => (p?.seriesName === 'نسبت پوشش بهره' ? faNum(val, 2) : faNum(val, 1))),
+      legend: makeLegend(['سود عملیاتی', 'هزینه مالی', 'نسبت پوشش بهره']),
+      xAxis: categoryAxis(SHORT_YEARS),
+      yAxis: [
+        valueAxis({ max: niceMax([...ebitData, ...intData], 100) * 1.1 }),
+        ratioAxis({ max: niceMax(covData, 5) * 1.1, decimals: 1 }),
+      ],
+      series: [
+        barSeries({ name: 'سود عملیاتی', data: ebitData, color: PALETTE.teal, barWidth: 14 }),
+        barSeries({ name: 'هزینه مالی', data: intData, color: PALETTE.danger, barWidth: 14 }),
+        lineSeries({
+          name: 'نسبت پوشش بهره',
+          data: covData,
+          color: PALETTE.gold,
+          yAxisIndex: 1,
+          width: 3,
+        }),
+      ],
+    };
+  }, [incomeByYear, ratiosByYear]);
 
-  // ----- Section 2: Liabilities vs equity (single axis) -----
+  // ── Section 2 (REBUILT): liabilities vs equity — 4 smooth lines ──
   const liabEquityOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 50, bottom: 30 },
-    tooltip: { ...baseTooltip },
-    legend: { ...baseLegend, data: ['حقوق صاحبان سهام', 'مجموع بدهی‌ها', 'درآمد عملیاتی', 'سرمایه ثبتی'] },
-    xAxis: { type: 'category', data: LONG_YEARS, ...faCategoryAxis() },
-    yAxis: { type: 'value', ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
+    grid: makeGrid({ top: 50 }),
+    tooltip: makeTooltip((v) => faNum(v, 1)),
+    legend: makeLegend(['حقوق صاحبان سهام', 'مجموع بدهی‌ها', 'درآمد عملیاتی', 'سرمایه ثبتی']),
+    xAxis: categoryAxis(LONG_YEARS),
+    yAxis: valueAxis(),
     series: [
-      {
+      lineSeries({
         name: 'حقوق صاحبان سهام',
-        type: 'line',
         data: LONG_YEARS.map((y) => balanceByYear[y]?.equities ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 5,
-        lineStyle: { color: PALETTE.teal, width: 2.5 },
-        itemStyle: { color: PALETTE.teal },
-      },
-      {
+        color: PALETTE.teal,
+        area: true,
+      }),
+      lineSeries({
         name: 'مجموع بدهی‌ها',
-        type: 'line',
         data: LONG_YEARS.map((y) => balanceByYear[y]?.totalLiabilities ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 5,
-        lineStyle: { color: PALETTE.danger, width: 2.5 },
-        itemStyle: { color: PALETTE.danger },
-      },
-      {
+        color: PALETTE.danger,
+      }),
+      lineSeries({
         name: 'درآمد عملیاتی',
-        type: 'line',
         data: LONG_YEARS.map((y) => incomeByYear[y]?.revenue ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 5,
-        lineStyle: { color: PALETTE.gold, width: 2.5, type: 'dashed' },
-        itemStyle: { color: PALETTE.gold },
-      },
-      {
+        color: PALETTE.gold,
+        dashed: true,
+      }),
+      lineSeries({
         name: 'سرمایه ثبتی',
-        type: 'line',
         data: LONG_YEARS.map((y) => balanceByYear[y]?.stock ?? null),
-        smooth: true, symbol: 'diamond', symbolSize: 5,
-        lineStyle: { color: PALETTE.tealDark, width: 2.5 },
-        itemStyle: { color: PALETTE.tealDark },
-      },
+        color: PALETTE.slate,
+        symbol: 'diamond',
+      }),
     ],
   }), [incomeByYear, balanceByYear]);
 
-  // ----- Section 3: Profitability trend (single axis) -----
+  // ── Section 3 (REBUILT): profitability — 4 smooth lines ──
   const profitabilityOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 50, bottom: 30 },
-    tooltip: { ...baseTooltip },
-    legend: { ...baseLegend, data: ['سود عملیاتی', 'سود خالص', 'مجموع بدهی‌ها', 'حقوق صاحبان سهام'] },
-    xAxis: { type: 'category', data: SHORT_YEARS, ...faCategoryAxis() },
-    yAxis: { type: 'value', ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
+    grid: makeGrid({ top: 50 }),
+    tooltip: makeTooltip((v) => faNum(v, 1)),
+    legend: makeLegend(['سود عملیاتی', 'سود خالص', 'مجموع بدهی‌ها', 'حقوق صاحبان سهام']),
+    xAxis: categoryAxis(SHORT_YEARS),
+    yAxis: valueAxis(),
     series: [
-      {
+      lineSeries({
         name: 'سود عملیاتی',
-        type: 'line',
         data: SHORT_YEARS.map((y) => incomeByYear[y]?.ebit ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 6,
-        lineStyle: { color: PALETTE.teal, width: 2.5 },
-        itemStyle: { color: PALETTE.teal },
-      },
-      {
+        color: PALETTE.teal,
+        area: true,
+      }),
+      lineSeries({
         name: 'سود خالص',
-        type: 'line',
         data: SHORT_YEARS.map((y) => incomeByYear[y]?.netProfit ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 6,
-        lineStyle: { color: PALETTE.gold, width: 2.5 },
-        itemStyle: { color: PALETTE.gold },
-      },
-      {
+        color: PALETTE.gold,
+        area: true,
+      }),
+      lineSeries({
         name: 'مجموع بدهی‌ها',
-        type: 'line',
         data: SHORT_YEARS.map((y) => balanceByYear[y]?.totalLiabilities ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 6,
-        lineStyle: { color: PALETTE.danger, width: 2.5, type: 'dashed' },
-        itemStyle: { color: PALETTE.danger },
-      },
-      {
+        color: PALETTE.danger,
+        dashed: true,
+      }),
+      lineSeries({
         name: 'حقوق صاحبان سهام',
-        type: 'line',
         data: SHORT_YEARS.map((y) => balanceByYear[y]?.equities ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 6,
-        lineStyle: { color: PALETTE.tealDark, width: 2.5, type: 'dashed' },
-        itemStyle: { color: PALETTE.tealDark },
-      },
+        color: PALETTE.slate,
+      }),
     ],
   }), [incomeByYear, balanceByYear]);
 
-  // ----- Section 4: Assets vs stock (single axis) -----
+  // ── Section 4 (REBUILT): assets vs stock — 3 smooth lines ──
   const assetsStockOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 50, bottom: 30 },
-    tooltip: { ...baseTooltip },
-    legend: { ...baseLegend, data: ['حقوق صاحبان سهام', 'مجموع دارایی‌ها', 'سرمایه ثبتی'] },
-    xAxis: { type: 'category', data: LONG_YEARS, ...faCategoryAxis() },
-    yAxis: { type: 'value', ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
+    grid: makeGrid({ top: 50 }),
+    tooltip: makeTooltip((v) => faNum(v, 1)),
+    legend: makeLegend(['حقوق صاحبان سهام', 'مجموع دارایی‌ها', 'سرمایه ثبتی']),
+    xAxis: categoryAxis(LONG_YEARS),
+    yAxis: valueAxis(),
     series: [
-      {
+      lineSeries({
         name: 'حقوق صاحبان سهام',
-        type: 'line',
         data: LONG_YEARS.map((y) => balanceByYear[y]?.equities ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 5,
-        lineStyle: { color: PALETTE.teal, width: 2.5 },
-        itemStyle: { color: PALETTE.teal },
-      },
-      {
+        color: PALETTE.teal,
+      }),
+      lineSeries({
         name: 'مجموع دارایی‌ها',
-        type: 'line',
         data: LONG_YEARS.map((y) => balanceByYear[y]?.totalAssets ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 5,
-        lineStyle: { color: PALETTE.tealDark, width: 2.5 },
-        itemStyle: { color: PALETTE.tealDark },
-      },
-      {
+        color: PALETTE.slate,
+        area: true,
+      }),
+      lineSeries({
         name: 'سرمایه ثبتی',
-        type: 'line',
         data: LONG_YEARS.map((y) => balanceByYear[y]?.stock ?? null),
-        smooth: true, symbol: 'diamond', symbolSize: 5,
-        lineStyle: { color: PALETTE.gold, width: 2.5 },
-        itemStyle: { color: PALETTE.gold },
-      },
+        color: PALETTE.gold,
+        symbol: 'diamond',
+      }),
     ],
   }), [balanceByYear]);
 
@@ -241,22 +199,22 @@ export default function PageComparative1({
       <div className="comparative-grid">
         <Section
           title="روند تغییرات نسبت پوشش بهره"
-          chart={<EChart option={coverageOption} style={{ height: 220 }} />}
+          chart={<EChart option={coverageOption} style={{ height: 230 }} />}
           kpis={section1Kpis}
         />
         <Section
           title="مقایسه روند بدهی‌ها با حقوق صاحبان سهام"
-          chart={<EChart option={liabEquityOption} style={{ height: 220 }} />}
+          chart={<EChart option={liabEquityOption} style={{ height: 230 }} />}
           kpis={section2Kpis}
         />
         <Section
           title="روند سودآوری"
-          chart={<EChart option={profitabilityOption} style={{ height: 220 }} />}
+          chart={<EChart option={profitabilityOption} style={{ height: 230 }} />}
           kpis={section3Kpis}
         />
         <Section
           title="مقایسه روند دارایی‌ها با سرمایه ثبتی"
-          chart={<EChart option={assetsStockOption} style={{ height: 220 }} />}
+          chart={<EChart option={assetsStockOption} style={{ height: 230 }} />}
           kpis={section4Kpis}
         />
       </div>

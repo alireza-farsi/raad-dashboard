@@ -1,16 +1,21 @@
 import EChart from './EChart';
 import { useMemo } from 'react';
 import { toFa } from '../utils/format';
-import { PALETTE, baseGrid, baseTooltip, baseLegend, faValueAxis, faCategoryAxis, FONT } from '../utils/echartsTheme';
+import {
+  PALETTE, makeGrid, makeTooltip, makeLegend, valueAxis, percentAxis,
+  categoryAxis, barSeries, lineSeries, niceMax, faNum,
+} from '../utils/echartsTheme';
 
 // Page 6 of the PDF: "اعتباری" — the dark-teal themed page.
 // Layout:
 //   Dark teal hero band: title + credit chips (رتبه، امتیاز، نرخ، نکول)
 //   2x2 grid of bank-list cards (white)
-//   Full-width dual-axis combo chart: bars (تسهیلات) + line (درآمد) + line (نسبت، درصد)
+//   Full-width REBUILT dual-axis combo chart:
+//     gradient bars (وام بانکی slate + وام غیربانکی gold)
+//     + درآمد teal line + نسبت dashed % line (right axis)
 //   7-row indicators table
 
-const CREDIT_YEARS = ['1398', '1399', '1400', '1401', '1402', '1403'];
+const CREDIT_YEARS = ['1398', '1399', '1400', '1401', '1402', '1403', '1404'];
 
 const DIAGNOSIS_KEYS = [
   { key: 'Loan_Dirkard_bt', label: 'دیرکرد وام' },
@@ -41,8 +46,8 @@ export default function PageCredit({
     return m;
   }, [diagnosis]);
 
-  // Dual-axis combo (PDF page 6): bars = facilities, line = revenue,
-  // second-axis line = facilities-to-revenue ratio (درصد).
+  // Dual-axis combo (REBUILT — PDF page 6):
+  // gradient bars = facilities, teal line = revenue, dashed % line on right axis.
   const comparisonTrendOption = useMemo(() => {
     const bankLoanData = CREDIT_YEARS.map((y) => facilitiesByYear[y]?.bankLoan ?? null);
     const fundLoanData = CREDIT_YEARS.map((y) => facilitiesByYear[y]?.fundLoan ?? null);
@@ -54,72 +59,38 @@ export default function PageCredit({
       if (!rev) return null;
       return ((loan + fund) / rev) * 100;
     });
-    const maxAmount = Math.max(1, ...bankLoanData, ...fundLoanData, ...revenueData.filter((v) => v != null));
+    const maxAmount = niceMax([...bankLoanData, ...fundLoanData, ...revenueData], 1000);
+    const maxRatio = niceMax(ratioData, 100);
 
     return {
-      grid: { ...baseGrid, top: 46, bottom: 32 },
-      tooltip: {
-        ...baseTooltip,
-        valueFormatter: (val, p) =>
-          p?.seriesName === 'نسبت تسهیلات به درآمد' ? toFa(val.toFixed(1)) + '٪' : toFa(val.toFixed(1)),
-      },
-      legend: {
-        ...baseLegend,
-        data: ['درآمد عملیاتی', 'وام بانکی', 'وام غیربانکی', 'نسبت تسهیلات به درآمد'],
-      },
-      xAxis: { type: 'category', data: CREDIT_YEARS, ...faCategoryAxis() },
+      grid: makeGrid({ top: 52, bottom: 10 }),
+      tooltip: makeTooltip(
+        (val, p) => (p?.seriesName === 'نسبت تسهیلات به درآمد' ? faNum(val, 1) + '٪' : faNum(val, 1))
+      ),
+      legend: makeLegend(['درآمد عملیاتی', 'وام بانکی', 'وام غیربانکی', 'نسبت تسهیلات به درآمد']),
+      xAxis: categoryAxis(CREDIT_YEARS),
       yAxis: [
-        {
-          type: 'value',
-          max: Math.ceil(maxAmount * 1.1),
-          ...faValueAxis({ decimals: 0 }),
-          name: 'میلیارد تومان',
-          nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 },
-        },
-        {
-          type: 'value',
-          name: 'درصد',
-          axisLabel: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 11, formatter: (v) => toFa(v.toFixed(0)) + '٪' },
-          splitLine: { show: false },
-          nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 },
-        },
+        valueAxis({ max: maxAmount * 1.08 }),
+        percentAxis({ max: maxRatio * 1.15 }),
       ],
       series: [
-        {
-          name: 'وام بانکی',
-          type: 'bar',
-          data: bankLoanData,
-          barWidth: 16,
-          itemStyle: { color: PALETTE.slate, borderRadius: [4, 4, 0, 0] },
-        },
-        {
-          name: 'وام غیربانکی',
-          type: 'bar',
-          data: fundLoanData,
-          barWidth: 16,
-          itemStyle: { color: PALETTE.gold, borderRadius: [4, 4, 0, 0] },
-        },
-        {
+        barSeries({ name: 'وام بانکی', data: bankLoanData, color: PALETTE.slate, barWidth: 20 }),
+        barSeries({ name: 'وام غیربانکی', data: fundLoanData, color: PALETTE.gold, barWidth: 20 }),
+        lineSeries({
           name: 'درآمد عملیاتی',
-          type: 'line',
           data: revenueData,
-          smooth: true,
-          symbol: 'circle',
-          symbolSize: 7,
-          lineStyle: { color: PALETTE.teal, width: 2.5 },
-          itemStyle: { color: PALETTE.teal },
-        },
-        {
+          color: PALETTE.teal,
+          width: 3,
+          symbolSize: 8,
+        }),
+        lineSeries({
           name: 'نسبت تسهیلات به درآمد',
-          type: 'line',
-          yAxisIndex: 1,
           data: ratioData,
-          smooth: true,
+          color: PALETTE.info,
+          dashed: true,
           symbol: 'diamond',
-          symbolSize: 7,
-          lineStyle: { color: PALETTE.info, width: 2, type: 'dashed' },
-          itemStyle: { color: PALETTE.info },
-        },
+          yAxisIndex: 1,
+        }),
       ],
     };
   }, [incomeByYear, facilitiesByYear]);
@@ -154,7 +125,7 @@ export default function PageCredit({
 
         <div className="chart-card compact">
           <div className="chart-title compact">مقایسه روند درآمدی با تسهیلات دریافتی</div>
-          <EChart option={comparisonTrendOption} style={{ height: 260 }} />
+          <EChart option={comparisonTrendOption} style={{ height: 290 }} />
           <div className="unit-note" style={{ marginTop: 6, marginBottom: 0 }}>
             تمامی ارقام به میلیارد تومان می‌باشد.
           </div>

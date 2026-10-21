@@ -1,13 +1,16 @@
 import EChart from './EChart';
 import { useMemo } from 'react';
 import { toFa } from '../utils/format';
-import { PALETTE, baseGrid, baseTooltip, baseLegend, faValueAxis, faCategoryAxis, FONT } from '../utils/echartsTheme';
+import {
+  PALETTE, makeGrid, makeTooltip, makeLegend, valueAxis, categoryAxis,
+  lineSeries, faNum,
+} from '../utils/echartsTheme';
 
 // Page 4 of the PDF: "ترازنامه"
 // Compact layout — everything fits on one screen:
 //   Top: two side-by-side balance-sheet tables (liabs+equity on the right,
 //        assets on the left) with 4 year columns each
-//   Bottom: two trend charts side-by-side
+//   Bottom: two REBUILT trend charts side-by-side (gradient area lines)
 //        1) روند حساب‌های پرداختنی، دریافتی و تسهیلات مالی
 //        2) روند تغییرات سرمایه در گردش به ترند دارایی‌ها
 
@@ -89,78 +92,72 @@ const RIGHT_GROUPS = [
 ];
 
 export default function PageBalance({ balance, year, allBalances }) {
+  // ── Chart 1 (REBUILT): payables / receivables / facilities — area lines ──
   const payRecvTrendOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 40, bottom: 30 },
-    tooltip: { ...baseTooltip },
-    legend: { ...baseLegend, data: ['حساب‌های پرداختنی', 'حساب‌های دریافتنی', 'تسهیلات مالی'] },
-    xAxis: { type: 'category', data: TREND_YEARS, ...faCategoryAxis() },
-    yAxis: { type: 'value', ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
+    grid: makeGrid({ top: 46 }),
+    tooltip: makeTooltip((v) => faNum(v, 1)),
+    legend: makeLegend(['حساب‌های پرداختنی', 'حساب‌های دریافتنی', 'تسهیلات مالی']),
+    xAxis: categoryAxis(TREND_YEARS),
+    yAxis: valueAxis(),
     series: [
-      {
+      lineSeries({
         name: 'حساب‌های پرداختنی',
-        type: 'line',
         data: TREND_YEARS.map((y) => allBalances[y]?.totalAccountsPayable ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 5,
-        lineStyle: { color: PALETTE.teal, width: 2.5 },
-        itemStyle: { color: PALETTE.teal },
-      },
-      {
+        color: PALETTE.slate,
+        area: true,
+      }),
+      lineSeries({
         name: 'حساب‌های دریافتنی',
-        type: 'line',
         data: TREND_YEARS.map((y) => allBalances[y]?.totalAccountsReceivable ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 5,
-        lineStyle: { color: PALETTE.tealDark, width: 2.5 },
-        itemStyle: { color: PALETTE.tealDark },
-      },
-      {
+        color: PALETTE.teal,
+        area: true,
+      }),
+      lineSeries({
         name: 'تسهیلات مالی',
-        type: 'line',
         data: TREND_YEARS.map((y) =>
           (allBalances[y]?.shortTermLoans ?? 0) + (allBalances[y]?.longTermLoans ?? 0) || null
         ),
-        smooth: true, symbol: 'diamond', symbolSize: 5,
-        lineStyle: { color: PALETTE.gold, width: 2.5 },
-        itemStyle: { color: PALETTE.gold },
-      },
+        color: PALETTE.gold,
+        dashed: true,
+        symbol: 'diamond',
+      }),
     ],
   }), [allBalances]);
 
+  // ── Chart 2 (REBUILT): current assets / total assets / working capital ──
   const wcAssetsTrendOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 40, bottom: 30 },
-    tooltip: { ...baseTooltip },
-    legend: { ...baseLegend, data: ['دارایی‌های جاری', 'مجموع دارایی‌ها', 'سرمایه در گردش'] },
-    xAxis: { type: 'category', data: TREND_YEARS, ...faCategoryAxis() },
-    yAxis: { type: 'value', ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
+    grid: makeGrid({ top: 46 }),
+    tooltip: makeTooltip((v) => faNum(v, 1)),
+    legend: makeLegend(['دارایی‌های جاری', 'مجموع دارایی‌ها', 'سرمایه در گردش']),
+    xAxis: categoryAxis(TREND_YEARS),
+    yAxis: valueAxis(),
     series: [
-      {
+      lineSeries({
         name: 'دارایی‌های جاری',
-        type: 'line',
         data: TREND_YEARS.map((y) => allBalances[y]?.totalCurrentAssets ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 5,
-        lineStyle: { color: PALETTE.teal, width: 2.5 },
-        itemStyle: { color: PALETTE.teal },
-      },
-      {
+        color: PALETTE.teal,
+        area: true,
+      }),
+      lineSeries({
         name: 'مجموع دارایی‌ها',
-        type: 'line',
         data: TREND_YEARS.map((y) => allBalances[y]?.totalAssets ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 5,
-        lineStyle: { color: PALETTE.tealDark, width: 2.5 },
-        itemStyle: { color: PALETTE.tealDark },
-      },
-      {
+        color: PALETTE.slate,
+        area: true,
+        symbol: 'rect',
+        symbolSize: 8,
+      }),
+      lineSeries({
         name: 'سرمایه در گردش',
-        type: 'line',
         data: TREND_YEARS.map((y) => {
           const ca = allBalances[y]?.totalCurrentAssets;
           const cl = allBalances[y]?.totalCurrentLiabilities;
           if (ca === null || ca === undefined || cl === null || cl === undefined) return null;
           return ca - cl;
         }),
-        smooth: true, symbol: 'diamond', symbolSize: 5,
-        lineStyle: { color: PALETTE.gold, width: 2.5, type: 'dashed' },
-        itemStyle: { color: PALETTE.gold },
-      },
+        color: PALETTE.gold,
+        dashed: true,
+        symbol: 'diamond',
+      }),
     ],
   }), [allBalances]);
 
@@ -217,11 +214,11 @@ export default function PageBalance({ balance, year, allBalances }) {
       <div className="grid-2col">
         <div className="chart-card compact">
           <div className="chart-title compact">روند حساب‌های پرداختنی، دریافتی و تسهیلات مالی</div>
-          <EChart option={payRecvTrendOption} style={{ height: 220 }} />
+          <EChart option={payRecvTrendOption} style={{ height: 240 }} />
         </div>
         <div className="chart-card compact">
           <div className="chart-title compact">روند تغییرات سرمایه در گردش به ترند دارایی‌ها</div>
-          <EChart option={wcAssetsTrendOption} style={{ height: 220 }} />
+          <EChart option={wcAssetsTrendOption} style={{ height: 240 }} />
         </div>
       </div>
     </div>

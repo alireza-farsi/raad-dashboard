@@ -1,7 +1,10 @@
 import EChart from './EChart';
 import { useMemo } from 'react';
 import { toFa } from '../utils/format';
-import { PALETTE, baseGrid, baseTooltip, baseLegend, faValueAxis, faCategoryAxis, FONT } from '../utils/echartsTheme';
+import {
+  PALETTE, makeGrid, makeTooltip, makeLegend, valueAxis, categoryAxis,
+  lineSeries, faNum,
+} from '../utils/echartsTheme';
 
 // Page 3 of the PDF: "صورت سود و زیان"
 // Compact two-column layout so everything fits on one screen:
@@ -9,8 +12,8 @@ import { PALETTE, baseGrid, baseTooltip, baseLegend, faValueAxis, faCategoryAxis
 //     - Statement table (5 years, 12 rows)
 //   Right column:
 //     - Cost structure table (5 years, 6 rows with percentages)
-//     - Profitability trend chart
-//     - Revenue with inflation chart
+//     - Profitability trend chart   (REBUILT: gradient area lines)
+//     - Revenue with inflation chart (REBUILT: area + dashed comparison)
 
 const STATEMENT_YEARS = ['1399', '1400', '1401', '1402', '1403'];
 const TREND_YEARS = ['1398', '1399', '1400', '1401', '1402', '1403'];
@@ -47,68 +50,64 @@ const STRUCTURE_ROWS = [
 ];
 
 export default function PagePL({ income, ratios, year, allIncomes }) {
+  // ── Chart 1 (REBUILT): profitability trend — gradient area lines ──
   const profitabilityTrendOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 40, bottom: 30 },
-    tooltip: { ...baseTooltip },
-    legend: { ...baseLegend, data: ['سود ناخالص', 'سود عملیاتی', 'سود خالص'] },
-    xAxis: { type: 'category', data: TREND_YEARS, ...faCategoryAxis() },
-    yAxis: { type: 'value', ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
+    grid: makeGrid({ top: 46 }),
+    tooltip: makeTooltip((v) => faNum(v, 1)),
+    legend: makeLegend(['سود ناخالص', 'سود عملیاتی', 'سود خالص']),
+    xAxis: categoryAxis(TREND_YEARS),
+    yAxis: valueAxis(),
     series: [
-      {
+      lineSeries({
         name: 'سود ناخالص',
-        type: 'line',
         data: TREND_YEARS.map((y) => allIncomes[y]?.grossProfit ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 6,
-        lineStyle: { color: PALETTE.teal, width: 2.5 },
-        itemStyle: { color: PALETTE.teal },
-      },
-      {
+        color: PALETTE.teal,
+        area: true,
+      }),
+      lineSeries({
         name: 'سود عملیاتی',
-        type: 'line',
         data: TREND_YEARS.map((y) => allIncomes[y]?.ebit ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 6,
-        lineStyle: { color: PALETTE.tealDark, width: 2.5 },
-        itemStyle: { color: PALETTE.tealDark },
-      },
-      {
+        color: PALETTE.tealDark,
+        area: true,
+        symbol: 'rect',
+        symbolSize: 8,
+      }),
+      lineSeries({
         name: 'سود خالص',
-        type: 'line',
         data: TREND_YEARS.map((y) => allIncomes[y]?.netProfit ?? null),
-        smooth: true, symbol: 'diamond', symbolSize: 6,
-        lineStyle: { color: PALETTE.gold, width: 2.5 },
-        itemStyle: { color: PALETTE.gold },
-      },
+        color: PALETTE.gold,
+        area: true,
+        symbol: 'diamond',
+      }),
     ],
   }), [allIncomes]);
 
+  // ── Chart 2 (REBUILT): revenue vs inflation-adjusted revenue ──
   const inflationTrendOption = useMemo(() => ({
-    grid: { ...baseGrid, top: 40, bottom: 30 },
-    tooltip: { ...baseTooltip },
-    legend: { ...baseLegend, data: ['درآمد عملیاتی', 'درآمد عملیاتی تعدیل‌شده با تورم'] },
-    xAxis: { type: 'category', data: INFLATION_YEARS, ...faCategoryAxis() },
-    yAxis: { type: 'value', ...faValueAxis({ compact: false, decimals: 0 }), name: 'میلیارد تومان', nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10 } },
+    grid: makeGrid({ top: 46 }),
+    tooltip: makeTooltip((v) => faNum(v, 1)),
+    legend: makeLegend(['درآمد عملیاتی', 'درآمد عملیاتی تعدیل‌شده با تورم']),
+    xAxis: categoryAxis(INFLATION_YEARS),
+    yAxis: valueAxis(),
     series: [
-      {
+      lineSeries({
         name: 'درآمد عملیاتی',
-        type: 'line',
         data: INFLATION_YEARS.map((y) => allIncomes[y]?.revenue ?? null),
-        smooth: true, symbol: 'circle', symbolSize: 6,
-        lineStyle: { color: PALETTE.teal, width: 2.5 },
-        itemStyle: { color: PALETTE.teal },
-        areaStyle: { color: 'rgba(29,158,117,0.08)' },
-      },
-      {
+        color: PALETTE.teal,
+        area: true,
+        width: 3,
+      }),
+      lineSeries({
         name: 'درآمد عملیاتی تعدیل‌شده با تورم',
-        type: 'line',
         data: INFLATION_YEARS.map((y) => {
           const rev = allIncomes[y]?.revenue;
           const factor = INFLATION_FACTORS[y];
           return rev !== undefined && factor ? rev * factor : null;
         }),
-        smooth: true, symbol: 'diamond', symbolSize: 6,
-        lineStyle: { color: PALETTE.gold, width: 2.5, type: 'dashed' },
-        itemStyle: { color: PALETTE.gold },
-      },
+        color: PALETTE.gold,
+        dashed: true,
+        symbol: 'diamond',
+      }),
     ],
   }), [allIncomes]);
 
@@ -201,12 +200,12 @@ export default function PagePL({ income, ratios, year, allIncomes }) {
 
           <div className="chart-card compact">
             <div className="chart-title compact">روند تغییرات سودآوری</div>
-            <EChart option={profitabilityTrendOption} style={{ height: 200 }} />
+            <EChart option={profitabilityTrendOption} style={{ height: 230 }} />
           </div>
 
           <div className="chart-card compact">
             <div className="chart-title compact">روند درآمد عملیاتی با احتساب تورم</div>
-            <EChart option={inflationTrendOption} style={{ height: 200 }} />
+            <EChart option={inflationTrendOption} style={{ height: 230 }} />
           </div>
         </div>
       </div>

@@ -50,6 +50,7 @@
   --teal-700: #0f766e;
   --teal-600: #14967f;
   --teal-500: #2a9d8f;
+  --teal-400: #3fb8a5;
   --teal-300: #7cc7ba;
   --teal-100: #dff2ec;
   --teal-50: #eef8f4;
@@ -456,57 +457,174 @@ table { border-collapse: collapse; width: 100%; }
   cursor: wait;
 }
 
-/* ===== Company hero (PDF cover page style) ===== */
-.company-hero {
+/* ===== درباره شرکت — hero "معرفی شرکت" (PDF page 2) ===== */
+.about-hero {
   position: relative;
   display: flex;
-  align-items: center;
-  gap: 18px;
+  align-items: stretch;
+  gap: 22px;
   background: var(--white);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  padding: 22px 24px;
+  padding: 26px 28px;
   margin-bottom: 16px;
   overflow: hidden;
 }
-.company-hero::after {
+.about-hero::before {
   content: '';
   position: absolute;
-  left: -40px;
-  top: -70px;
-  width: 340px;
-  height: 240px;
+  inset: 0 auto 0 0;
+  width: 7px;
+  background: linear-gradient(180deg, var(--teal-700), var(--gold));
+  border-radius: 7px 0 0 7px;
+}
+.about-hero::after {
+  content: '';
+  position: absolute;
+  left: 60px;
+  top: -80px;
+  width: 380px;
+  height: 260px;
   background:
-    radial-gradient(circle at 20% 60%, rgba(42, 157, 143, 0.14) 0 46px, transparent 47px),
-    radial-gradient(circle at 45% 30%, rgba(212, 163, 115, 0.16) 0 30px, transparent 31px),
-    radial-gradient(circle at 70% 70%, rgba(42, 157, 143, 0.1) 0 24px, transparent 25px);
+    radial-gradient(circle at 20% 60%, rgba(42, 157, 143, 0.12) 0 46px, transparent 47px),
+    radial-gradient(circle at 45% 30%, rgba(212, 163, 115, 0.14) 0 30px, transparent 31px),
+    radial-gradient(circle at 72% 70%, rgba(42, 157, 143, 0.1) 0 24px, transparent 25px);
   pointer-events: none;
 }
-.hero-avatar {
-  width: 60px;
-  height: 60px;
-  border-radius: 16px;
+.about-hero-side { display: flex; align-items: center; flex-shrink: 0; }
+.about-avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 22px;
   background: linear-gradient(135deg, var(--teal-800), var(--teal-500));
   color: var(--white);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  font-weight: 600;
-  flex-shrink: 0;
-  box-shadow: 0 10px 22px -10px rgba(15, 118, 110, 0.65);
-}
-.hero-title {
-  font-size: 21px;
+  font-size: 34px;
   font-weight: 700;
-  color: var(--ink);
-  margin-bottom: 8px;
+  box-shadow: 0 12px 26px -12px rgba(15, 118, 110, 0.7);
+  border: 3px solid rgba(255, 255, 255, 0.55);
 }
-.hero-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
-.hero-meta-row { font-size: 12px; color: var(--ink-soft); line-height: 2; }
-.hero-meta-value { font-weight: 600; color: var(--ink); }
-.hero-meta-value.ltr { direction: ltr; display: inline-block; }
+.about-hero-body { flex: 1; min-width: 0; position: relative; z-index: 1; }
+.about-hero-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.about-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--teal-900);
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+.about-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.about-intro {
+  font-size: 13px;
+  line-height: 2.15;
+  color: var(--ink);
+  text-align: justify;
+  margin: 0 0 14px;
+  max-width: 96%;
+}
+.about-meta-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.about-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  padding: 5px 13px;
+  font-size: 11.5px;
+}
+.about-meta-chip-label { color: var(--ink-soft); }
+.about-meta-chip-value { font-weight: 700; color: var(--teal-900); }
+.about-meta-chip-value.ltr { direction: ltr; display: inline-block; }
+
+/* ===== About page cards ===== */
+.about-card { margin-bottom: 16px; }
+.board-name { display: flex; align-items: center; gap: 7px; }
+.board-gender-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--teal-500);
+  flex-shrink: 0;
+}
+.board-gender-dot[data-g='f'] { background: var(--gold); }
+.email-cell {
+  direction: ltr;
+  text-align: left;
+  font-size: 11px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+.tech-cell { font-size: 11px; color: var(--ink-soft); }
+
+/* Contacts list */
+.contact-list { display: flex; flex-direction: column; gap: 9px; }
+.contact-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.contact-row:hover { border-color: var(--teal-300); background: var(--white); }
+.contact-role {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--teal-800);
+  background: var(--teal-100);
+  border-radius: 999px;
+  padding: 4px 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.contact-person { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; }
+.contact-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--teal-600), var(--teal-400));
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.contact-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+.contact-phone {
+  direction: ltr;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.contact-note {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  background: var(--bg-soft);
+  border: 1px dashed var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  text-align: center;
+}
 
 .badge {
   display: inline-flex;
@@ -735,6 +853,16 @@ table { border-collapse: collapse; width: 100%; }
   margin-bottom: 16px;
 }
 .chart-card.compact { padding: 12px 14px; }
+
+/* EChart wrapper div — full width, block display, never collapses.
+   Do NOT force canvas width/height — ECharts + ResizeObserver own it. */
+.echart-root {
+  width: 100%;
+  min-height: 60px;
+}
+.echart-root canvas {
+  display: block;
+}
 .chart-title {
   font-size: 13.5px;
   font-weight: 600;
@@ -1331,6 +1459,10 @@ table { border-collapse: collapse; width: 100%; }
   .cr-head { flex-direction: column; }
   .cr-badge { width: 100%; flex-direction: row; gap: 12px; }
   .kpi-summary-strip { grid-template-columns: repeat(2, 1fr); }
+  .about-hero { flex-direction: column; padding: 20px; }
+  .about-hero::before { width: 5px; }
+  .contact-row { flex-wrap: wrap; }
+  .contact-phone { margin-inline-start: auto; }
 }
 @media (max-width: 680px) {
   .sidebar {
@@ -1344,6 +1476,11 @@ table { border-collapse: collapse; width: 100%; }
   .content-area { padding: 14px 14px 28px; }
   .cr-subscores { grid-template-columns: 1fr; }
   .banks-2x2-grid { grid-template-columns: 1fr; }
+  .fact-grid.three { grid-template-columns: 1fr; }
+  .about-hero-head { flex-direction: column; align-items: flex-start; }
+  .contact-row { flex-direction: column; align-items: flex-start; }
+  .contact-phone { margin-inline-start: 0; }
+  .email-cell { max-width: 120px; }
 }
 
 /* hero meta separator */

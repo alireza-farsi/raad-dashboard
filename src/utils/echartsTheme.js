@@ -1,115 +1,180 @@
-// Shared ECharts helpers for the dashboard.
-// All charts use the Ravi FaNum font and Persian digits on axis labels.
-// Palette matches the UI-sample design: slate bars, teal lines,
-// gold/tan/cyan accents, dashed light grid lines.
+// ============================================================================
+// echartsTheme — REBUILT chart factory system (v2)
+//
+// All charts in the dashboard are built from these factories so the whole
+// app shares one coherent design language, taken from the UI-sample PDF:
+//
+//   • bars  — subtle vertical gradient, rounded top corners
+//   • lines — smooth, circle markers, optional soft gradient area fill
+//   • grid  — dashed light lines, no axis lines, clean margins
+//   • legend— top, circular icons, scrollable
+//   • tooltip — RTL, white card w/ shadow, Persian digits + ٬ separators
+//   • right axis for ratios/percentages (dual-axis combos)
+//
+// Every factory returns plain objects, so pages compose them freely.
+// ============================================================================
 
 import { toFa } from './format';
 
 const FONT = "'Ravi FaNum', Tahoma, sans-serif";
 
-const PALETTE = {
+// --- palette (PDF tokens) ---------------------------------------------------
+export const PALETTE = {
+  // brand
   teal: '#14967f',
   tealDark: '#0b5d47',
   tealDeep: '#083f35',
-  tealLight: '#7cc7ba',
-  tealPale: '#dff2ec',
+  tealLight: '#2a9d8f',
+  tealPale: '#7cc7ba',
   gold: '#d4a373',
   goldDeep: '#c5a059',
-  amber: '#eab308',
   slate: '#1e293b',
+  slateLight: '#3b4b63',
+  cyan: '#67e8f9',
+  // semantic
+  danger: '#c2452d',
+  warning: '#b45309',
+  info: '#0e7490',
+  // neutrals
   ink: '#1f2937',
   inkSoft: '#6b7280',
   borderSoft: '#e7e2d5',
-  gridLine: '#e5e7eb',
-  bgSoft: '#faf8f2',
-  creamLight: '#f4f0e6',
+  gridLine: '#e8e5db',
   white: '#ffffff',
-  danger: '#b91c1c',
-  warning: '#b45309',
-  info: '#0e7490',
-  cyan: '#67e8f9',
-  purple: '#7e57c2',
-  series: [
-    '#1e293b', // slate 800 — primary bars (PDF)
-    '#14967f', // teal 600 — primary line/bars (PDF)
-    '#d4a373', // tan/gold (PDF)
-    '#67e8f9', // cyan 300 (PDF)
-    '#eab308', // yellow/gold (PDF)
-    '#7e57c2', // purple
-    '#b91c1c', // red
-    '#0e7490', // cyan 700
-  ],
 };
 
-// Take a number formatter function and wrap it so the output uses Persian digits.
-function faFormatter(fn) {
-  return (val) => toFa(fn(val));
+// Series color cycle — slate bars first, teal lines, gold/cyan accents (PDF).
+export const SERIES_COLORS = [
+  PALETTE.slate,
+  PALETTE.teal,
+  PALETTE.gold,
+  PALETTE.cyan,
+  PALETTE.tealLight,
+  PALETTE.warning,
+  PALETTE.info,
+  PALETTE.danger,
+];
+
+// --- number helpers ----------------------------------------------------------
+
+/** Persian digits with thousands separators. */
+export function faNum(v, decimals = 0) {
+  if (v === null || v === undefined || Number.isNaN(Number(v))) return '—';
+  const n = Number(v);
+  const s = n.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+  return toFa(s.replace(/,/g, '٬'));
 }
 
-// Convert numeric value to Persian-digit label.
-function toFaPlain(value) {
-  if (value === null || value === undefined || Number.isNaN(value)) return '—';
-  return toFa(value);
+/** Compute a clean "nice" axis maximum from data values. */
+export function niceMax(values, fallback = 1) {
+  const valid = values.filter((v) => v !== null && v !== undefined && !Number.isNaN(v));
+  if (valid.length === 0) return fallback;
+  const max = Math.max(...valid);
+  if (max <= 0) return fallback;
+  const mag = Math.pow(10, Math.floor(Math.log10(max)));
+  const norm = max / mag;
+  let nice;
+  if (norm <= 1) nice = 1;
+  else if (norm <= 2) nice = 2;
+  else if (norm <= 5) nice = 5;
+  else nice = 10;
+  return nice * mag;
 }
 
-export const baseTextStyle = {
-  fontFamily: FONT,
-  color: PALETTE.ink,
-};
+/** Lighten a hex color by mixing toward white (t = 0..1). */
+function lighten(hex, t) {
+  const c = hex.replace('#', '');
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
+  const mix = (x) => Math.round(x + (255 - x) * t);
+  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+}
+
+/** Hex → `rgba(r,g,b,a)` string. */
+function rgba(hex, a) {
+  const c = hex.replace('#', '');
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+// --- layout building blocks --------------------------------------------------
 
 export const baseGrid = {
-  left: 56,
-  right: 26,
-  top: 42,
-  bottom: 34,
+  left: 14,
+  right: 18,
+  top: 44,
+  bottom: 8,
   containLabel: true,
 };
 
-export const baseTooltip = {
-  trigger: 'axis',
-  axisPointer: {
-    type: 'shadow',
-    shadowStyle: { color: 'rgba(20, 150, 127, 0.06)' },
-  },
-  backgroundColor: PALETTE.white,
-  borderColor: PALETTE.borderSoft,
-  borderWidth: 1,
-  padding: [10, 14],
-  textStyle: { fontFamily: FONT, color: PALETTE.ink, fontSize: 12 },
-  extraCssText:
-    'direction: rtl; border-radius: 10px; box-shadow: 0 8px 26px -8px rgba(31,41,55,0.25);',
-  valueFormatter: (val) => (typeof val === 'number' ? toFa(val.toFixed(2)) : val),
-};
+export function makeGrid(opts = {}) {
+  return { ...baseGrid, ...opts };
+}
 
-export const baseLegend = {
-  show: true,
-  type: 'scroll',
-  top: 0,
-  right: 0,
-  icon: 'circle',
-  textStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 11 },
-  itemWidth: 9,
-  itemHeight: 9,
-  itemGap: 14,
-};
-
-// Build default axis formatters that turn numeric values into Persian digit
-// strings with thousands separators. Never uses the "K" compact suffix.
-export function faValueAxis(opts = {}) {
-  const { unit = '', decimals = 0 } = opts;
+export function makeLegend(names, opts = {}) {
   return {
+    type: 'scroll',
+    top: 0,
+    right: 0,
+    icon: 'circle',
+    itemWidth: 9,
+    itemHeight: 9,
+    itemGap: 16,
+    textStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 11 },
+    pageIconColor: PALETTE.teal,
+    pageIconInactiveColor: PALETTE.gridLine,
+    pageTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft },
+    ...(names ? { data: names } : {}),
+    ...opts,
+  };
+}
+
+/**
+ * RTL axis tooltip. `fmt` maps (value, seriesName) → string.
+ * Defaults to Persian thousand-separated numbers.
+ */
+export function makeTooltip(fmt, opts = {}) {
+  return {
+    trigger: 'axis',
+    axisPointer: {
+      type: 'line',
+      lineStyle: { color: rgba('#14967f', 0.45), width: 1.5, type: 'solid' },
+      crossStyle: { color: PALETTE.gridLine },
+    },
+    backgroundColor: PALETTE.white,
+    borderColor: PALETTE.borderSoft,
+    borderWidth: 1,
+    padding: [10, 14],
+    textStyle: { fontFamily: FONT, color: PALETTE.ink, fontSize: 12 },
+    extraCssText:
+      'direction: rtl; border-radius: 10px; box-shadow: 0 10px 30px -10px rgba(31,41,55,0.35);',
+    valueFormatter: fmt ?? ((v) => faNum(v, 1)),
+    ...opts,
+  };
+}
+
+// --- axes ---------------------------------------------------------------------
+
+/** Left value axis — amounts in میلیارد تومان. */
+export function valueAxis(opts = {}) {
+  const { name = 'میلیارد تومان', max, min = 0, decimals = 0 } = opts;
+  return {
+    type: 'value',
+    name,
+    nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10, padding: [0, 0, 0, 6] },
+    min,
+    ...(max !== undefined ? { max } : {}),
     axisLabel: {
       fontFamily: FONT,
       color: PALETTE.inkSoft,
       fontSize: 11,
-      formatter: (val) => {
-        let s = decimals > 0 ? val.toFixed(decimals) : Math.round(val).toString();
-        const n = Number(s.replace(/[^\d.-]/g, ''));
-        if (!Number.isNaN(n)) {
-          s = n.toLocaleString('en-US', { maximumFractionDigits: decimals });
-        }
-        return toFa(s.replace(/,/g, '٬')) + (unit ? ' ' + unit : '');
-      },
+      formatter: (v) => faNum(v, decimals),
     },
     axisLine: { show: false },
     axisTick: { show: false },
@@ -117,28 +182,144 @@ export function faValueAxis(opts = {}) {
   };
 }
 
-export function faCategoryAxis() {
+/** Right value axis — unitless ratio (نسبت). */
+export function ratioAxis(opts = {}) {
+  const { name = 'نسبت', max, min = 0, decimals = 1 } = opts;
   return {
+    type: 'value',
+    name,
+    nameTextStyle: { fontFamily: FONT, color: PALETTE.inkSoft, fontSize: 10, padding: [0, 6, 0, 0] },
+    min,
+    ...(max !== undefined ? { max } : {}),
     axisLabel: {
       fontFamily: FONT,
       color: PALETTE.inkSoft,
       fontSize: 11,
-      formatter: (val) => toFa(val),
+      formatter: (v) => faNum(v, decimals),
+    },
+    axisLine: { show: false },
+    axisTick: { show: false },
+    splitLine: { show: false },
+  };
+}
+
+/** Right value axis — percentages. */
+export function percentAxis(opts = {}) {
+  const axis = ratioAxis({ name: 'درصد', ...opts });
+  axis.axisLabel.formatter = (v) => faNum(v, opts.decimals ?? 0) + '٪';
+  return axis;
+}
+
+/** Category (years) axis — renders Latin-digit keys as Persian digits. */
+export function categoryAxis(years, opts = {}) {
+  return {
+    type: 'category',
+    data: years,
+    axisLabel: {
+      fontFamily: FONT,
+      color: PALETTE.inkSoft,
+      fontSize: 11,
+      formatter: (v) => toFa(v),
+      margin: 12,
     },
     axisLine: { lineStyle: { color: PALETTE.borderSoft } },
     axisTick: { show: false },
+    ...opts,
   };
 }
 
-// Shared bar styling (PDF: flat slate/teal bars with rounded tops)
-export function barStyle(color, opts = {}) {
-  const { barWidth = undefined, radius = [4, 4, 0, 0] } = opts;
+// --- series factories ----------------------------------------------------------
+
+/**
+ * Gradient bar series (PDF style: subtle vertical gradient + rounded top).
+ */
+export function barSeries({ name, data, color, yAxisIndex, barWidth = 18, stack }) {
   return {
+    name,
     type: 'bar',
+    data,
+    ...(yAxisIndex !== undefined ? { yAxisIndex } : {}),
+    ...(stack ? { stack } : {}),
     barWidth,
-    itemStyle: { color, borderRadius: radius },
-    emphasis: { itemStyle: { color, opacity: 0.85 } },
+    itemStyle: {
+      borderRadius: [5, 5, 0, 0],
+      color: {
+        type: 'linear',
+        x: 0, y: 0, x2: 0, y2: 1,
+        colorStops: [
+          { offset: 0, color: lighten(color, 0.18) },
+          { offset: 1, color },
+        ],
+      },
+    },
+    emphasis: {
+      focus: 'series',
+      itemStyle: { shadowBlur: 12, shadowColor: rgba(color, 0.4), shadowOffsetY: 3 },
+    },
   };
 }
 
-export { PALETTE, FONT, faFormatter, toFaPlain };
+/**
+ * Smooth line series with circle markers and an optional soft gradient
+ * area fill (used for trend charts).
+ */
+export function lineSeries({
+  name,
+  data,
+  color,
+  yAxisIndex,
+  area = false,
+  dashed = false,
+  symbol = 'circle',
+  width = 2.6,
+  symbolSize = 7,
+}) {
+  return {
+    name,
+    type: 'line',
+    data,
+    smooth: 0.35,
+    symbol,
+    symbolSize,
+    ...(yAxisIndex !== undefined ? { yAxisIndex } : {}),
+    lineStyle: { color, width, ...(dashed ? { type: 'dashed' } : {}) },
+    itemStyle: {
+      color,
+      borderColor: PALETTE.white,
+      borderWidth: 2,
+      shadowBlur: 6,
+      shadowColor: rgba(color, 0.45),
+      shadowOffsetY: 2,
+    },
+    ...(area
+      ? {
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0, y: 0, x2: 0, y2: 1,
+              colorStops: [
+                { offset: 0, color: rgba(color, 0.22) },
+                { offset: 1, color: rgba(color, 0.01) },
+              ],
+            },
+          },
+        }
+      : {}),
+    emphasis: { focus: 'series', scale: 1.4 },
+  };
+}
+
+// --- misc ------------------------------------------------------------------------
+
+/** Base animation timings so all charts feel the same. */
+export const baseAnimation = {
+  animationDuration: 650,
+  animationDurationUpdate: 350,
+  animationEasing: 'cubicOut',
+  animationEasingUpdate: 'cubicInOut',
+};
+
+// Backwards-compatible aliases (older code imported these names).
+export const baseTooltip = makeTooltip();
+export const baseLegend = makeLegend();
+export { FONT };
